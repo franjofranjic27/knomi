@@ -1,0 +1,11 @@
+# Global owner — review required on all PRs
+* @franjofranjic27
+
+# Ingestion pipeline
+/knomi/ingest/ @franjofranjic27
+
+# Infrastructure / compose
+/compose.yml @franjofranjic27
+
+# CI / workflows
+/.github/workflows/ @franjofranjic27

@@ -49,6 +49,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]  # typer.Argument/Option in defaults is intentional
 
 [tool.ruff.format]
 quote-style = "double"
@@ -58,6 +59,7 @@ indent-style = "space"
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
