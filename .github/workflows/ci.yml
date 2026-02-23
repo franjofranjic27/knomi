@@ -104,4 +104,6 @@ jobs:
       - name: Run integration tests
         env:
           KNOMI_DB_URL: http://localhost:6333
-        run: uv run pytest tests/integration -v --tb=short
+        run: |
+          uv run pytest tests/integration -v --tb=short || ec=$?
+          [ "${ec:-0}" -eq 0 ] || [ "${ec:-0}" -eq 5 ]
