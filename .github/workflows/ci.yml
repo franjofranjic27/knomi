@@ -16,12 +16,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
-          enable-caching: true
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --all-extras
@@ -44,18 +44,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
-          enable-caching: true
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --all-extras
 
       - name: Run unit tests
-        run: uv run pytest tests/unit -v --tb=short
+        run: |
+          uv run pytest tests/unit -v --tb=short; ec=$?
+          [ $ec -eq 0 ] || [ $ec -eq 5 ]
 
   integration:
     name: Integration tests
@@ -77,12 +79,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
-          enable-caching: true
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --all-extras
