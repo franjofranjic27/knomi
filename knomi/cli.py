@@ -26,21 +26,29 @@ def ingest(
     embedding_model: str = typer.Option(
         "text-embedding-3-small", help="Embedding model name or HF ID."
     ),
+    embedding_dim: int = typer.Option(1536, help="Embedding vector dimension."),
     db_url: str = typer.Option("http://localhost:6333", help="Qdrant server URL."),
     collection: str = typer.Option("knomi", help="Qdrant collection name."),
 ) -> None:
     """Scan SOURCE_DIR, embed documents, and upsert into the vector store."""
+    from knomi.ingest.pipeline import run_pipeline
+
     config = Config(
         source_dir=source_dir,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         embedding_model=embedding_model,
+        embedding_dim=embedding_dim,
         db_url=db_url,
         collection=collection,
     )
     console.print(f"[bold]knomi ingest[/bold] — scanning [cyan]{config.source_dir}[/cyan]")
-    # TODO: from knomi.ingest.pipeline import run_pipeline; run_pipeline(config)
-    console.print("[yellow]Pipeline not yet implemented.[/yellow]")
+    result = run_pipeline(config, progress_callback=lambda msg: console.log(msg))
+    console.print(
+        f"[green]Done![/green] {result.total_files} files · "
+        f"{result.total_chunks} chunks · {result.total_vectors} vectors "
+        f"(skipped {result.skipped_files}, failed {len(result.failed_files)})"
+    )
 
 
 @app.command()
@@ -65,7 +73,11 @@ def status(
     collection: str | None = typer.Option(None, help="Specific collection to inspect."),
 ) -> None:
     """Print collection statistics from the connected vector store."""
+    from knomi.store.qdrant import QdrantStore
+
     config = Config(db_url=db_url)
+    if collection:
+        config = Config(db_url=db_url, collection=collection)
     console.print(f"[bold]knomi status[/bold] — connecting to [cyan]{config.db_url}[/cyan]")
-    # TODO: from knomi.store.qdrant import QdrantStore; QdrantStore(config).describe()
-    console.print("[yellow]Status not yet implemented.[/yellow]")
+    info = QdrantStore(config).describe()
+    console.print(info)

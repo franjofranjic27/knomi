@@ -24,6 +24,8 @@ dependencies = [
     "qdrant-client>=1.9",
     # Progress display
     "rich>=13.0",
+    # OpenAI embeddings
+    "openai>=1.0",
 ]
 
 [project.urls]

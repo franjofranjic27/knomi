@@ -6,8 +6,6 @@ Responsibilities
 - ``chunk_size`` and ``chunk_overlap`` are always expressed in tokens,
   not characters, using a tokeniser matched to the embedding model.
 - Return ``Chunk`` objects that carry the text and source metadata.
-
-Not yet implemented — stubs only.
 """
 
 from __future__ import annotations
@@ -51,14 +49,45 @@ def chunk(
 
     Returns:
         Ordered list of ``Chunk`` objects.
-
-    TODO:
-        - Use ``tiktoken.get_encoding(encoding_name)`` to tokenise.
-        - Implement a sliding window: advance by ``chunk_size - chunk_overlap``
-          tokens per step.
-        - Decode each window back to a string.
-        - Attach metadata: ``source``, ``doc_id``, ``chunk_index``, ``total_chunks``.
-        - Handle edge case where ``len(tokens) <= chunk_size`` (single chunk).
-        - Handle empty input (return empty list).
     """
-    raise NotImplementedError
+    if not text:
+        return []
+
+    import tiktoken
+
+    enc = tiktoken.get_encoding(encoding_name)
+    tokens = enc.encode(text)
+
+    if len(tokens) <= chunk_size:
+        return [
+            Chunk(
+                text=text,
+                metadata={
+                    "source": str(source),
+                    "doc_id": doc_id,
+                    "chunk_index": 0,
+                    "total_chunks": 1,
+                },
+            )
+        ]
+
+    step = chunk_size - chunk_overlap
+    windows: list[list[int]] = []
+    i = 0
+    while i < len(tokens):
+        windows.append(tokens[i : i + chunk_size])
+        i += step
+
+    total = len(windows)
+    return [
+        Chunk(
+            text=enc.decode(w),
+            metadata={
+                "source": str(source),
+                "doc_id": doc_id,
+                "chunk_index": idx,
+                "total_chunks": total,
+            },
+        )
+        for idx, w in enumerate(windows)
+    ]

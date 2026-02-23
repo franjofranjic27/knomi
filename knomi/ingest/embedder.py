@@ -7,8 +7,6 @@ Responsibilities
     - **Local** (HuggingFace ``sentence-transformers``): no API key required.
     - **OpenAI API**: ``text-embedding-3-small`` / ``text-embedding-3-large``.
 - Respect ``embedding_batch_size`` to avoid OOM / rate-limit errors.
-
-Not yet implemented — stubs only.
 """
 
 from __future__ import annotations
@@ -37,53 +35,52 @@ class BaseEmbedder(ABC):
     def embed_chunks(self, chunks: list[Chunk], batch_size: int = 64) -> list[list[float]]:
         """Embed *chunks* in batches of *batch_size*.
 
-        TODO:
-            - Slice chunks into batches.
-            - Call ``self.embed()`` for each batch.
-            - Flatten and return results in original order.
+        Args:
+            chunks:     Chunks whose ``.text`` will be embedded.
+            batch_size: Number of texts to send per backend call.
+
+        Returns:
+            Flat list of vectors in the same order as *chunks*.
         """
-        raise NotImplementedError
+        vectors: list[list[float]] = []
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i : i + batch_size]
+            vectors.extend(self.embed([c.text for c in batch]))
+        return vectors
 
 
 class LocalEmbedder(BaseEmbedder):
-    """Embedding via a local sentence-transformers model.
-
-    TODO:
-        - Load ``SentenceTransformer(model_name)`` in ``__init__``.
-        - Implement ``embed()`` using ``model.encode(texts).tolist()``.
-    """
+    """Embedding via a local sentence-transformers model."""
 
     def __init__(self, model_name: str) -> None:
-        # TODO: self.model = SentenceTransformer(model_name)
-        raise NotImplementedError
+        from sentence_transformers import SentenceTransformer
+
+        self.model = SentenceTransformer(model_name)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError
+        return self.model.encode(texts, show_progress_bar=False).tolist()  # type: ignore[no-any-return]
 
 
 class OpenAIEmbedder(BaseEmbedder):
-    """Embedding via the OpenAI Embeddings API.
-
-    TODO:
-        - Initialise ``openai.OpenAI()`` client in ``__init__``.
-        - Implement ``embed()`` using ``client.embeddings.create()``.
-        - Handle rate-limit retries with exponential back-off.
-    """
+    """Embedding via the OpenAI Embeddings API."""
 
     def __init__(self, model_name: str) -> None:
-        # TODO: self.client = openai.OpenAI(); self.model = model_name
-        raise NotImplementedError
+        import openai
+
+        self.client = openai.OpenAI()
+        self.model = model_name
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError
+        response = self.client.embeddings.create(model=self.model, input=texts)
+        return [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
 
 
 def build_embedder(config: Config) -> BaseEmbedder:
     """Factory — return the correct embedder for *config*.
 
-    Heuristic: if ``embedding_model`` starts with ``text-embedding-``,
-    use the OpenAI backend; otherwise treat it as a HuggingFace model ID.
-
-    TODO: Implement routing logic.
+    If ``embedding_model`` starts with ``text-embedding-``, use OpenAI;
+    otherwise treat it as a HuggingFace sentence-transformers model ID.
     """
-    raise NotImplementedError
+    if config.embedding_model.startswith("text-embedding-"):
+        return OpenAIEmbedder(config.embedding_model)
+    return LocalEmbedder(config.embedding_model)

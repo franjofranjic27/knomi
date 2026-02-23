@@ -6,12 +6,11 @@ Responsibilities
 - Normalise output: collapse whitespace, de-hyphenate line breaks,
   strip page headers/footers.
 - Return an empty string (not raise) for unreadable or empty files.
-
-Not yet implemented — stubs only.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -25,10 +24,6 @@ def parse(path: Path) -> str:
 
     Returns:
         Normalised plain text, or empty string if extraction fails.
-
-    TODO:
-        - Add per-format extractors below.
-        - Log a warning (not raise) on extraction failure.
     """
     suffix = path.suffix.lower()
     extractors = {
@@ -45,30 +40,30 @@ def parse(path: Path) -> str:
 
 
 def _normalise(text: str) -> str:
-    """Collapse whitespace and de-hyphenate line-broken words.
-
-    TODO: Implement regex-based normalisation pipeline.
-    """
-    raise NotImplementedError
+    """Collapse whitespace and de-hyphenate line-broken words."""
+    text = re.sub(r"-\n", "", text)  # de-hyphenate line breaks
+    text = re.sub(r"\s+", " ", text)  # collapse all whitespace
+    return text.strip()
 
 
 def _parse_pdf(path: Path) -> str:
-    """Extract text from a PDF using PyMuPDF (fitz).
+    """Extract text from a PDF using PyMuPDF (fitz)."""
+    import fitz  # pymupdf
 
-    TODO:
-        - Use ``fitz.open(path)`` and iterate pages.
-        - Concatenate ``page.get_text()`` for each page.
-        - Pass through ``_normalise()``.
-        - Handle scanned PDFs with no embedded text layer gracefully.
-    """
-    raise NotImplementedError
+    pages: list[str] = []
+    try:
+        with fitz.open(path) as doc:
+            for page in doc:
+                pages.append(page.get_text())
+    except Exception:
+        return ""
+    return _normalise("\n".join(pages))
 
 
 def _parse_text(path: Path) -> str:
-    """Read a plain-text file (txt, md).
-
-    TODO:
-        - Read with UTF-8, fall back to latin-1.
-        - Pass through ``_normalise()``.
-    """
-    raise NotImplementedError
+    """Read a plain-text file (txt, md), falling back to latin-1 encoding."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        text = path.read_text(encoding="latin-1")
+    return _normalise(text)

@@ -6,8 +6,6 @@ scan → dedup → parse → chunk → embed → store
 
 Each step is a pure function or thin wrapper; this module wires them together
 and handles progress reporting and error recovery.
-
-Not yet implemented — stubs only.
 """
 
 from __future__ import annotations
@@ -43,39 +41,46 @@ def run_pipeline(
 
     Returns:
         ``PipelineResult`` with counts of processed / skipped / failed files.
-
-    TODO — step-by-step implementation plan:
-
-    1. **Scan**
-       ``from knomi.ingest.scanner import scan``
-       Iterate ``scan(config.source_dir)`` to get ``ScannedFile`` objects.
-
-    2. **Dedup**
-       ``from knomi.store.qdrant import QdrantStore``
-       Instantiate the store. For each ``ScannedFile``, check whether a
-       document with the same ``sha256`` already exists in the collection.
-       Increment ``result.skipped_files`` and skip if so.
-
-    3. **Parse**
-       ``from knomi.ingest.parser import parse``
-       Call ``parse(scanned_file.path)`` → plain text string.
-       On empty result or exception: add to ``result.failed_files``, continue.
-
-    4. **Chunk**
-       ``from knomi.ingest.chunker import chunk``
-       Call ``chunk(text, source=..., doc_id=..., chunk_size=..., chunk_overlap=...)``
-       → ``list[Chunk]``.
-
-    5. **Embed**
-       ``from knomi.ingest.embedder import build_embedder``
-       ``embedder = build_embedder(config)``
-       Call ``embedder.embed_chunks(chunks, batch_size=config.embedding_batch_size)``
-       → ``list[list[float]]``.
-
-    6. **Store**
-       Call ``store.upsert(chunks, vectors)`` to persist into Qdrant.
-       Increment ``result.total_vectors``.
-
-    7. **Return** ``PipelineResult``.
     """
-    raise NotImplementedError
+    from knomi.ingest.chunker import chunk
+    from knomi.ingest.embedder import build_embedder
+    from knomi.ingest.parser import parse
+    from knomi.ingest.scanner import scan
+    from knomi.store.qdrant import QdrantStore
+
+    result = PipelineResult()
+    store = QdrantStore(config)
+    embedder = build_embedder(config)
+
+    for scanned in scan(config.source_dir):
+        result.total_files += 1
+        if progress_callback:
+            progress_callback(f"Processing {scanned.path.name}")
+
+        if store.has_document(scanned.sha256):
+            result.skipped_files += 1
+            continue
+
+        try:
+            text = parse(scanned.path)
+        except Exception:
+            result.failed_files.append(scanned.path)
+            continue
+
+        if not text:
+            result.failed_files.append(scanned.path)
+            continue
+
+        chunks = chunk(
+            text,
+            source=scanned.path,
+            doc_id=scanned.sha256,
+            chunk_size=config.chunk_size,
+            chunk_overlap=config.chunk_overlap,
+        )
+        vectors = embedder.embed_chunks(chunks, batch_size=config.embedding_batch_size)
+        store.upsert(chunks, vectors)
+        result.total_chunks += len(chunks)
+        result.total_vectors += len(vectors)
+
+    return result

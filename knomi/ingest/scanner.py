@@ -6,12 +6,11 @@ Responsibilities
 - Filter files by a configurable extension whitelist.
 - Compute a SHA-256 hash for each file (used for deduplication).
 - Yield ``ScannedFile`` objects consumed by the pipeline.
-
-Not yet implemented — stubs only.
 """
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,18 +37,16 @@ def scan(root: Path, extensions: frozenset[str] = SUPPORTED_EXTENSIONS) -> Itera
 
     Yields:
         ScannedFile for each matching file.
-
-    TODO:
-        - Skip symlink loops.
-        - Respect a ``.knomiignore`` file (gitignore-style).
-        - Emit progress events for large trees.
     """
-    raise NotImplementedError
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and not path.is_symlink() and path.suffix.lower() in extensions:
+            yield ScannedFile(path=path, sha256=_sha256(path), size_bytes=path.stat().st_size)
 
 
 def _sha256(path: Path) -> str:
-    """Return the hex SHA-256 digest of a file.
-
-    TODO: Stream in chunks to support large files without loading into memory.
-    """
-    raise NotImplementedError
+    """Return the hex SHA-256 digest of a file, streaming in 64 KiB chunks."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(65536), b""):
+            h.update(block)
+    return h.hexdigest()
