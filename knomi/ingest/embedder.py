@@ -32,6 +32,17 @@ class BaseEmbedder(ABC):
         """
         ...
 
+    def embed_query(self, text: str) -> list[float]:
+        """Embed a single query string and return its vector.
+
+        Args:
+            text: The query string to embed.
+
+        Returns:
+            A single float vector.
+        """
+        return self.embed([text])[0]
+
     def embed_chunks(self, chunks: list[Chunk], batch_size: int = 64) -> list[list[float]]:
         """Embed *chunks* in batches of *batch_size*.
 

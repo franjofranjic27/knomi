@@ -59,12 +59,14 @@ def serve(
     port: int = typer.Option(8080, help="Server port."),
 ) -> None:
     """Start an HTTP server that exposes the vector store as a RAG endpoint."""
+    from knomi.serve.server import start_server
+
     config = Config(db_url=db_url, collection=collection, serve_host=host, serve_port=port)
     console.print(
         f"[bold]knomi serve[/bold] — [cyan]{config.serve_host}:{config.serve_port}[/cyan]"
     )
-    # TODO: from knomi.serve.server import start_server; start_server(config)
-    console.print("[yellow]Serve mode not yet implemented.[/yellow]")
+    console.print(f"[dim]collection: {config.collection} · db: {config.db_url}[/dim]")
+    start_server(config)
 
 
 @app.command()

@@ -56,7 +56,7 @@ class QdrantStore(VectorStore):
                 vector=v,
                 payload={**c.metadata, "text": c.text},
             )
-            for c, v in zip(chunks, vectors, strict=False)
+            for c, v in zip(chunks, vectors, strict=True)
         ]
         self.client.upsert(collection_name=self.collection, points=points)
 

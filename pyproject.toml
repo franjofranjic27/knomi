@@ -26,6 +26,13 @@ dependencies = [
     "rich>=13.0",
     # OpenAI embeddings
     "openai>=1.0",
+    # DOCX parsing
+    "python-docx>=1.1",
+    # HTML parsing
+    "beautifulsoup4>=4.12",
+    # RAG serve mode
+    "fastapi>=0.111",
+    "uvicorn>=0.29",
 ]
 
 [project.urls]
@@ -43,6 +50,7 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.4",
     "pre-commit>=3.7",
+    "httpx>=0.27",
 ]
 
 [tool.ruff]

@@ -43,3 +43,46 @@ def test_parse_text_latin1_fallback(tmp_path: Path) -> None:
     f.write_bytes("caf\xe9".encode("latin-1"))
     result = parse(f)
     assert "caf" in result
+
+
+def test_parse_pdf(pdf_file: Path) -> None:
+    result = parse(pdf_file)
+    assert "Hello PDF world" in result
+    assert len(result) > 0
+
+
+def test_parse_docx(tmp_path: Path) -> None:
+    from docx import Document  # type: ignore[import-untyped]
+
+    path = tmp_path / "doc.docx"
+    doc = Document()
+    doc.add_paragraph("Hello DOCX world.")
+    doc.add_paragraph("Second paragraph here.")
+    doc.save(str(path))
+
+    result = parse(path)
+    assert "Hello DOCX world" in result
+    assert "Second paragraph" in result
+
+
+def test_parse_html(tmp_path: Path) -> None:
+    path = tmp_path / "page.html"
+    path.write_text(
+        "<html><body><h1>Title</h1><p>HTML content here.</p></body></html>",
+        encoding="utf-8",
+    )
+    result = parse(path)
+    assert "Title" in result
+    assert "HTML content here" in result
+    assert "<h1>" not in result
+
+
+def test_parse_html_strips_tags(tmp_path: Path) -> None:
+    path = tmp_path / "styled.html"
+    path.write_text(
+        "<html><head><style>body{color:red}</style></head><body><p>Visible text.</p></body></html>",
+        encoding="utf-8",
+    )
+    result = parse(path)
+    assert "Visible text" in result
+    assert "<style>" not in result

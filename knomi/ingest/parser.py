@@ -30,8 +30,8 @@ def parse(path: Path) -> str:
         ".pdf": _parse_pdf,
         ".md": _parse_text,
         ".txt": _parse_text,
-        # ".docx": _parse_docx,
-        # ".html": _parse_html,
+        ".docx": _parse_docx,
+        ".html": _parse_html,
     }
     extractor = extractors.get(suffix)
     if extractor is None:
@@ -66,4 +66,32 @@ def _parse_text(path: Path) -> str:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         text = path.read_text(encoding="latin-1")
+    return _normalise(text)
+
+
+def _parse_docx(path: Path) -> str:
+    """Extract text from a DOCX file using python-docx."""
+    from docx import Document
+
+    try:
+        doc = Document(str(path))
+        text = "\n".join(p.text for p in doc.paragraphs)
+    except Exception:
+        return ""
+    return _normalise(text)
+
+
+def _parse_html(path: Path) -> str:
+    """Extract text from an HTML file using BeautifulSoup."""
+    from bs4 import BeautifulSoup
+
+    try:
+        try:
+            content = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            content = path.read_text(encoding="latin-1")
+        soup = BeautifulSoup(content, "html.parser")
+        text = soup.get_text(separator=" ")
+    except Exception:
+        return ""
     return _normalise(text)
