@@ -64,4 +64,37 @@ def test_status_prints_collection_info() -> None:
         mock_cls.return_value.describe.return_value = mock_info
         result = runner.invoke(app, ["status"])
     assert result.exit_code == 0
-    assert "knomi" in result.output
+    assert "Points" in result.output
+    assert "10" in result.output
+    assert "{" not in result.output
+
+
+def test_ingest_passes_batch_size_to_config(tmp_path: Path) -> None:
+    mock_result = PipelineResult(total_files=1, total_chunks=1, total_vectors=1)
+    with patch("knomi.ingest.pipeline.run_pipeline", return_value=mock_result) as mock_run:
+        result = runner.invoke(app, ["ingest", str(tmp_path), "--embedding-batch-size", "32"])
+    assert result.exit_code == 0
+    config_arg = mock_run.call_args[0][0]
+    assert config_arg.embedding_batch_size == 32
+
+
+def test_serve_passes_top_k_to_config() -> None:
+    with patch("knomi.serve.server.start_server") as mock_start:
+        result = runner.invoke(app, ["serve", "--top-k", "10"])
+    assert result.exit_code == 0
+    config_arg = mock_start.call_args[0][0]
+    assert config_arg.top_k == 10
+
+
+def test_delete_calls_store_delete() -> None:
+    doc_id = "abc123"
+    with patch("knomi.store.qdrant.QdrantStore") as mock_cls:
+        result = runner.invoke(app, ["delete", doc_id])
+    assert result.exit_code == 0
+    mock_cls.return_value.delete.assert_called_once_with(doc_id)
+
+
+def test_delete_help() -> None:
+    result = runner.invoke(app, ["delete", "--help"])
+    assert result.exit_code == 0
+    assert "SHA-256" in result.output

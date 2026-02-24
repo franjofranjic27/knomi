@@ -46,6 +46,9 @@ class Config(BaseSettings):
     embedding_batch_size: int = Field(
         64, gt=0, description="Number of chunks embedded per API/model call."
     )
+    embedding_workers: int = Field(
+        1, gt=0, description="Parallel workers for batch embedding (>1 speeds up OpenAI calls)."
+    )
 
     # --- Vector store ---
     db_url: str = Field(

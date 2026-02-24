@@ -27,9 +27,12 @@ knomi/
 │   │   ├── chunker.py        # tiktoken sliding-window splitter → list[Chunk]
 │   │   ├── embedder.py       # BaseEmbedder, LocalEmbedder, OpenAIEmbedder, factory
 │   │   └── pipeline.py       # Orchestrator: scan→dedup→parse→chunk→embed→store
-│   └── store/
-│       ├── base.py           # Abstract VectorStore (upsert, search, delete, has_document)
-│       └── qdrant.py         # Qdrant implementation (server URL or local file path)
+│   ├── store/
+│   │   ├── base.py           # Abstract VectorStore (upsert, search, delete, has_document, describe, get_source, update_source)
+│   │   └── qdrant.py         # Qdrant implementation (server URL or local file path)
+│   └── serve/
+│       ├── __init__.py
+│       └── server.py         # FastAPI app — GET /health, POST /query
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── TESTING.md
@@ -108,6 +111,47 @@ knomi serve --port 8080       # expose RAG as HTTP API for agents
 ## Supported File Types
 
 Priority order for the scanner: `.pdf`, `.md`, `.txt`, `.docx`, `.html`. Each format has its own parser; the pipeline routes by extension.
+
+## How to Extend
+
+### Adding a new document format
+
+1. Add the extension to `SUPPORTED_EXTENSIONS` in `knomi/ingest/scanner.py`.
+2. Write a `_parse_<format>(path: Path) -> str` function in `knomi/ingest/parser.py`.
+   - Must return normalised plain text or `""` on failure — never raise.
+   - Call `_normalise()` before returning.
+   - Lazy-import the parsing library inside the function body.
+3. Register it in the `extractors` dict in `parse()` (`knomi/ingest/parser.py`).
+4. Add a unit test in `tests/unit/test_parser.py`: create a minimal fixture, call `parse()`, assert the expected text is present.
+
+### Adding a new vector store backend
+
+1. Create `knomi/store/<backend>.py`.
+2. Subclass `VectorStore` from `knomi/store/base.py` and implement **all** abstract methods:
+   `upsert`, `search`, `delete`, `has_document`, `describe`, `get_source`, `update_source`.
+3. Wire it into `knomi/ingest/pipeline.py` and `knomi/serve/server.py` via a factory
+   (similar to `build_embedder()` in `knomi/ingest/embedder.py`).
+4. Add integration tests under `tests/integration/`.
+
+### Adding a new embedding backend
+
+1. Subclass `BaseEmbedder` in `knomi/ingest/embedder.py` and implement `embed(texts)`.
+   The `embed_query` and `embed_chunks` (including concurrent batching) are inherited for free.
+2. Update the `build_embedder()` factory with the routing condition.
+3. Add unit tests in `tests/unit/test_embedder.py` — mock the backend, test the routing logic.
+
+### Key data flow (ingest)
+
+```
+ScannedFile(path, sha256)
+  → parse(path)          → plain text   (knomi/ingest/parser.py)
+  → chunk(text, ...)     → list[Chunk]  (knomi/ingest/chunker.py)
+  → embedder.embed(...)  → list[vector] (knomi/ingest/embedder.py)
+  → store.upsert(...)                   (knomi/store/qdrant.py)
+```
+
+Each `Chunk.metadata` carries `doc_id` (SHA-256), `source` (path), `chunk_index`, and `total_chunks`.
+These fields are stored as Qdrant payload and are used for dedup, move detection, and deletion.
 
 ## Commit Style
 

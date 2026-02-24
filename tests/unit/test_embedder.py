@@ -45,3 +45,17 @@ def test_embed_chunks_single_batch(mock_embedder: BaseEmbedder) -> None:
 
 def test_embed_chunks_empty(mock_embedder: BaseEmbedder) -> None:
     assert mock_embedder.embed_chunks([], batch_size=10) == []
+
+
+def test_embed_query_returns_single_vector(mock_embedder: BaseEmbedder) -> None:
+    vector = mock_embedder.embed_query("what is RAG?")
+    assert isinstance(vector, list)
+    assert len(vector) == 4
+
+
+def test_embed_chunks_concurrent(mock_embedder: BaseEmbedder) -> None:
+    chunks = _make_chunks(9)
+    sequential = mock_embedder.embed_chunks(chunks, batch_size=3, workers=1)
+    concurrent = mock_embedder.embed_chunks(chunks, batch_size=3, workers=3)
+    assert sequential == concurrent
+    assert len(concurrent) == 9

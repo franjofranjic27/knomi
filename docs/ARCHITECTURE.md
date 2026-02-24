@@ -52,7 +52,10 @@ Thin wrapper around an embedding backend. Supports local models (via `sentence-t
 Orchestrator: scanner → dedup check → parser → chunker → embedder → store. Emits progress via a callback so the CLI can render a progress bar. All steps are pure functions; the pipeline wires them together.
 
 ### `knomi/store/base.py`
-Abstract `VectorStore` protocol. Methods: `upsert(chunks, vectors)`, `search(vector, top_k)`, `delete(doc_id)`, `list_collections()`. Any store backend must satisfy this interface.
+Abstract `VectorStore` protocol. Methods: `upsert`, `search`, `delete`, `has_document`, `describe`, `get_source`, `update_source`. Any store backend must satisfy this interface.
+
+### `knomi/serve/server.py`
+FastAPI application for the RAG query API. Exposes `GET /health` (liveness check) and `POST /query` (embed a query string, search the vector store, return ranked chunks). The `create_app(config)` factory builds the app; `start_server(config)` runs it with uvicorn.
 
 ### `knomi/store/qdrant.py`
 Qdrant implementation. Uses the official `qdrant-client` SDK. Handles both local-file mode (no Docker) and server mode (HTTP/gRPC URL).

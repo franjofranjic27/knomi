@@ -71,6 +71,11 @@ def chunk(
             )
         ]
 
+    # Sliding-window algorithm:
+    #   step  = chunk_size - chunk_overlap   (how far to advance each iteration)
+    #   Each window spans tokens[i : i + chunk_size].
+    #   Adjacent windows share `chunk_overlap` tokens, giving the embedding
+    #   model context continuity across chunk boundaries.
     step = chunk_size - chunk_overlap
     windows: list[list[int]] = []
     i = 0

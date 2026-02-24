@@ -51,3 +51,13 @@ class VectorStore(ABC):
     def describe(self) -> dict[str, object]:
         """Return collection metadata (vector count, dimension, etc.)."""
         ...
+
+    @abstractmethod
+    def get_source(self, doc_id: str) -> str | None:
+        """Return the stored source path for *doc_id*, or ``None`` if not indexed."""
+        ...
+
+    @abstractmethod
+    def update_source(self, doc_id: str, new_source: str) -> None:
+        """Update the ``source`` field for every chunk belonging to *doc_id*."""
+        ...

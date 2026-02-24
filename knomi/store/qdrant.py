@@ -8,6 +8,7 @@ Supports two modes:
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from qdrant_client import QdrantClient
@@ -19,10 +20,13 @@ from qdrant_client.models import (
     PointStruct,
     VectorParams,
 )
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from knomi.config import Config
 from knomi.ingest.chunker import Chunk
 from knomi.store.base import SearchResult, VectorStore
+
+log = logging.getLogger(__name__)
 
 
 class QdrantStore(VectorStore):
@@ -44,7 +48,15 @@ class QdrantStore(VectorStore):
                 vectors_config=VectorParams(size=self.dim, distance=Distance.COSINE),
             )
 
+    @retry(
+        wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
+        stop=stop_after_attempt(3),
+        reraise=True,
+        before_sleep=before_sleep_log(log, logging.WARNING),
+    )
     def upsert(self, chunks: list[Chunk], vectors: list[list[float]]) -> None:
+        # uuid5(NAMESPACE_DNS, doc_id + chunk_index) produces a deterministic ID
+        # so re-indexing the same content is idempotent (upsert, not insert).
         points = [
             PointStruct(
                 id=str(
@@ -92,6 +104,28 @@ class QdrantStore(VectorStore):
                 ),
             ).count
             > 0
+        )
+
+    def get_source(self, doc_id: str) -> str | None:
+        """Return the ``source`` path stored for the first chunk of *doc_id*."""
+        records, _ = self.client.scroll(
+            collection_name=self.collection,
+            scroll_filter=Filter(
+                must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
+            ),
+            limit=1,
+            with_payload=["source"],
+        )
+        if not records:
+            return None
+        return str((records[0].payload or {}).get("source", ""))
+
+    def update_source(self, doc_id: str, new_source: str) -> None:
+        """Overwrite the ``source`` field for every chunk belonging to *doc_id*."""
+        self.client.set_payload(
+            collection_name=self.collection,
+            payload={"source": new_source},
+            points=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]),
         )
 
     def describe(self) -> dict[str, object]:
