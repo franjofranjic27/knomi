@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,13 @@ class Config(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+    )
+
+    # --- API Keys ---
+    openai_api_key: str | None = Field(
+        None,
+        validation_alias=AliasChoices("OPENAI_API_KEY", "KNOMI_OPENAI_API_KEY"),
+        description="OpenAI API key (read from OPENAI_API_KEY env var or .env file).",
     )
 
     # --- Ingest ---

@@ -64,10 +64,10 @@ class LocalEmbedder(BaseEmbedder):
 class OpenAIEmbedder(BaseEmbedder):
     """Embedding via the OpenAI Embeddings API."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, api_key: str | None = None) -> None:
         import openai
 
-        self.client = openai.OpenAI()
+        self.client = openai.OpenAI(api_key=api_key)
         self.model = model_name
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -82,5 +82,5 @@ def build_embedder(config: Config) -> BaseEmbedder:
     otherwise treat it as a HuggingFace sentence-transformers model ID.
     """
     if config.embedding_model.startswith("text-embedding-"):
-        return OpenAIEmbedder(config.embedding_model)
+        return OpenAIEmbedder(config.embedding_model, api_key=config.openai_api_key)
     return LocalEmbedder(config.embedding_model)
