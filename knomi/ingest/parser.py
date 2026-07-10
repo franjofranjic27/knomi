@@ -41,7 +41,7 @@ def parse(path: Path) -> str:
 
 def _normalise(text: str) -> str:
     """Collapse whitespace and de-hyphenate line-broken words."""
-    text = re.sub(r"-\n", "", text)  # de-hyphenate line breaks
+    text = text.replace("-\n", "")  # de-hyphenate line breaks
     text = re.sub(r"\s+", " ", text)  # collapse all whitespace
     return text.strip()
 
