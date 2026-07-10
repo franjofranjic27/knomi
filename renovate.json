@@ -1,0 +1,48 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Europe/Zurich",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Workflow commits with scope ci, automerge patch/minor/digest",
+      "matchManagers": ["github-actions"],
+      "semanticCommitScope": "ci",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Group dev tooling (lint/type/test), automerge minor/patch",
+      "matchPackageNames": ["ruff", "mypy", "pytest", "pytest-**", "pre-commit"],
+      "groupName": "python dev tooling",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Embedding/ML stack updates individually (model compatibility)",
+      "matchPackageNames": ["sentence-transformers", "tiktoken", "torch"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Majors individually, no automerge, 3-day cooldown",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "minimumReleaseAge": "3 days"
+    }
+  ]
+}
