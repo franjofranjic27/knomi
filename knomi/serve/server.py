@@ -70,7 +70,7 @@ def create_app(config: Config) -> FastAPI:
         """Return OK and the active collection name."""
         return {"status": "ok", "collection": config.collection}
 
-    @app.post("/query", response_model=QueryResponse, summary="Semantic search")
+    @app.post("/query", summary="Semantic search")
     def query(req: QueryRequest) -> QueryResponse:
         """Embed *req.query* and return the *req.top_k* most similar chunks."""
         vector = embedder.embed_query(req.query)

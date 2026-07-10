@@ -18,6 +18,10 @@ from knomi.config import Config
 app = typer.Typer(name="knomi", help="Document ingestion and RAG connector.")
 console = Console()
 
+DEFAULT_DB_URL = "http://localhost:6333"
+DB_URL_HELP = "Qdrant server URL."
+COLLECTION_HELP = "Qdrant collection name."
+
 
 @app.callback()
 def _configure(
@@ -47,8 +51,8 @@ def ingest(
     embedding_workers: int = typer.Option(
         1, "--embedding-workers", help="Parallel embedding threads (>1 for OpenAI)."
     ),
-    db_url: str = typer.Option("http://localhost:6333", help="Qdrant server URL."),
-    collection: str = typer.Option("knomi", help="Qdrant collection name."),
+    db_url: str = typer.Option(DEFAULT_DB_URL, help=DB_URL_HELP),
+    collection: str = typer.Option("knomi", help=COLLECTION_HELP),
 ) -> None:
     """Scan SOURCE_DIR, embed documents, and upsert into the vector store."""
     from knomi.ingest.pipeline import run_pipeline
@@ -80,8 +84,8 @@ def ingest(
 
 @app.command()
 def serve(
-    db_url: str = typer.Option("http://localhost:6333", help="Qdrant server URL."),
-    collection: str = typer.Option("knomi", help="Qdrant collection name."),
+    db_url: str = typer.Option(DEFAULT_DB_URL, help=DB_URL_HELP),
+    collection: str = typer.Option("knomi", help=COLLECTION_HELP),
     host: str = typer.Option("0.0.0.0", help="Server host."),
     port: int = typer.Option(8080, help="Server port."),
     top_k: int = typer.Option(5, "--top-k", help="Default number of results returned per query."),
@@ -101,7 +105,7 @@ def serve(
 
 @app.command()
 def status(
-    db_url: str = typer.Option("http://localhost:6333", help="Qdrant server URL."),
+    db_url: str = typer.Option(DEFAULT_DB_URL, help=DB_URL_HELP),
     collection: str | None = typer.Option(None, help="Specific collection to inspect."),
 ) -> None:
     """Print collection statistics from the connected vector store."""
@@ -123,8 +127,8 @@ def status(
 @app.command()
 def delete(
     doc_id: str = typer.Argument(..., help="SHA-256 hash of the document to remove."),
-    db_url: str = typer.Option("http://localhost:6333", help="Qdrant server URL."),
-    collection: str = typer.Option("knomi", help="Qdrant collection name."),
+    db_url: str = typer.Option(DEFAULT_DB_URL, help=DB_URL_HELP),
+    collection: str = typer.Option("knomi", help=COLLECTION_HELP),
 ) -> None:
     """Remove all vectors for a document from the collection."""
     from knomi.store.qdrant import QdrantStore
