@@ -1,13 +1,21 @@
 # knomi
 
-> Token-efficient document ingestion and RAG connector for local AI agents.
+[![CI](https://img.shields.io/github/actions/workflow/status/franjofranjic27/knomi/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/franjofranjic27/knomi/actions/workflows/ci.yml)
+[![Quality Gate](https://img.shields.io/sonar/quality_gate/franjofranjic27_knomi?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge)](https://sonarcloud.io/summary/overall?id=franjofranjic27_knomi)
+[![Coverage](https://img.shields.io/sonar/coverage/franjofranjic27_knomi?server=https%3A%2F%2Fsonarcloud.io&style=for-the-badge)](https://sonarcloud.io/summary/overall?id=franjofranjic27_knomi)
+[![PyPI version](https://img.shields.io/pypi/v/knomi?style=for-the-badge)](https://pypi.org/project/knomi/)
+[![Python](https://img.shields.io/pypi/pyversions/knomi?style=for-the-badge)](https://pypi.org/project/knomi/)
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
-[![CI](https://github.com/franjofranjic27/knomi/actions/workflows/ci.yml/badge.svg)](https://github.com/franjofranjic27/knomi/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/knomi)](https://pypi.org/project/knomi/)
-[![Python](https://img.shields.io/pypi/pyversions/knomi)](https://pypi.org/project/knomi/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+knomi is a token-efficient document ingestion CLI and RAG connector for local
+AI agents: it indexes your documents (PDF, Markdown, DOCX, HTML, plain text)
+into a vector database and serves them as a retrieval source for Claude,
+OpenWebUI, Ollama and other agents.
 
----
+## Project Status
+
+Published on [PyPI](https://pypi.org/project/knomi/) (`pip install knomi`);
+releases are tag-driven — see [docs/WORKFLOWS.md](docs/WORKFLOWS.md).
 
 ## Features
 
@@ -18,8 +26,6 @@
 - **Pluggable vector stores** — Qdrant (default) or ChromaDB; both share the same abstract interface.
 - **RAG serve mode** — exposes the indexed vector store as an HTTP API for Claude, OpenWebUI, Ollama, and other agents.
 - **Single-command infrastructure** — `docker compose up` brings up Qdrant and an optional ingest worker.
-
----
 
 ## Quick start
 
@@ -46,8 +52,6 @@ knomi ingest ./docs --db-url http://localhost:6333 --collection my-kb
 pip install knomi
 knomi ingest ./docs --db-url ./chroma_data --collection my-kb
 ```
-
----
 
 ## CLI usage
 
@@ -81,8 +85,6 @@ knomi serve --port 8080
 # Starts an HTTP server that agents (Claude, OpenWebUI, Ollama) can query.
 ```
 
----
-
 ## Configuration
 
 All options can be set as CLI flags, environment variables, or in a `knomi.toml` / `.env` file.
@@ -97,58 +99,33 @@ Precedence: **CLI flags > env vars > config file**.
 | `--db-url` | `KNOMI_DB_URL` | `http://localhost:6333` | Vector store URL or local path |
 | `--collection` | `COLLECTION` | `knomi` | Vector store collection name |
 
----
+## Tech Stack
 
-## Development
+| Technology | Version | Purpose |
+|---|---|---|
+| Python | ≥ 3.12 | Language (uv-managed) |
+| Typer | — | CLI framework |
+| tiktoken | — | Token-based chunking |
+| sentence-transformers | — | Local embeddings |
+| Qdrant / ChromaDB | — | Vector stores |
+| pytest / ruff / mypy | — | Tests, lint, types |
 
-### Setup
+## Documentation
 
-```bash
-# Clone and install all deps (including dev extras)
-git clone https://github.com/franjofranjic27/knomi.git
-cd knomi
-uv sync --all-extras
+| Document | Description |
+|---|---|
+| [Docs site](https://franjofranjic27.github.io/knomi/) | Rendered documentation (GitHub Pages) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, pipeline, interfaces |
+| [docs/adr/](docs/adr) | Architecture decision records |
+| [docs/COMMIT_CONVENTION.md](docs/COMMIT_CONVENTION.md) | Commit message format and rules |
+| [docs/TESTING.md](docs/TESTING.md) | How to run and write tests |
+| [docs/WORKFLOWS.md](docs/WORKFLOWS.md) | GitHub Actions CI/CD workflows |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems and fixes |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributor setup and workflow |
 
-# Install pre-commit hooks (run once after cloning)
-uv run pre-commit install                        # commit-time hooks
-uv run pre-commit install --hook-type pre-push   # push-time hooks
-```
+Repo-wide conventions (README/badge standard, PR and issue templates) live in
+[franjofranjic27/.github](https://github.com/franjofranjic27/.github).
 
-### Running tests
+## License
 
-```bash
-pytest                        # all tests
-pytest tests/unit/            # unit tests only (no Docker required)
-pytest tests/integration/     # requires Qdrant running
-pytest -k "test_chunker"      # single test by name
-```
-
-### Infrastructure
-
-```bash
-# Start Qdrant only
-docker compose up qdrant -d
-
-# Full stack (Qdrant + ingest worker)
-docker compose up
-```
-
-### Lint, format, and type check
-
-```bash
-ruff check .
-ruff format .
-mypy knomi
-```
-
-The pre-commit hooks run these automatically on `git commit` and `git push`.
-
----
-
-## Contributing
-
-- Commit messages follow **Conventional Commits** — see [`docs/COMMITING_CONVENTION.md`](docs/COMMITING_CONVENTION.md).
-- Pull requests use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
-- CI must be green and at least one review approval is required before merging.
-
-For the full developer workflow (branching, releases, dependency updates) see [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md).
+[MIT](LICENSE)
