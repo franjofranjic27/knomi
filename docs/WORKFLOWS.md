@@ -72,7 +72,7 @@ The workflow builds the package with `uv build` and publishes to PyPI using OIDC
 
 ## PR process
 
-1. Branch off `main` using the naming convention in `COMMITING_CONVENTION.md`.
+1. Branch off `main` using the naming convention in `COMMIT_CONVENTION.md`.
 2. Open a PR — the template in `.github/PULL_REQUEST_TEMPLATE.md` guides the description.
 3. CI must be green.
 4. At least one review approval required (enforced via `CODEOWNERS`).
