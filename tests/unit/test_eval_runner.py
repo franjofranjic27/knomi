@@ -36,6 +36,16 @@ def test_evaluate_query_dedups_docs_and_flags_relevance() -> None:
     assert result.first_relevant_rank == 1
 
 
+def test_evaluate_query_pattern_matching_multiple_docs_counts_once() -> None:
+    # One relevant pattern ("EndToEnd") matches two distinct retrieved docs;
+    # only the first should be credited so recall cannot exceed 1.0.
+    hits = [_hit("/x/03-EndToEnd-NN.pdf", 0.9), _hit("/x/04-EndToEnd-NN-BackProp.pdf", 0.8)]
+    query = EvalQuery(id="q", question="?", relevant_sources=("EndToEnd",))
+    result = evaluate_query(_FakeRetriever([hits]).search, query, top_k=10)
+    assert result.ranked_relevance == [True, False]  # second match is not novel
+    assert sum(result.ranked_relevance) <= result.total_relevant
+
+
 def test_evaluate_query_no_relevant() -> None:
     query = EvalQuery(id="q", question="?", relevant_sources=("target.pdf",))
     result = evaluate_query(_FakeRetriever([[_hit("/x/other.pdf", 0.5)]]).search, query, top_k=10)

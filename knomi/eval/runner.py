@@ -86,7 +86,21 @@ def _rank_documents(sources: list[str]) -> list[str]:
 
 
 def _relevance_flags(ranked_docs: list[str], relevant_sources: tuple[str, ...]) -> list[bool]:
-    return [any(source_matches(doc, rel) for rel in relevant_sources) for doc in ranked_docs]
+    """Flag each ranked doc as relevant, crediting every relevant pattern once.
+
+    A doc is relevant only if it matches a relevant source not already credited
+    to a higher-ranked doc. This keeps ``sum(flags)`` equal to the number of
+    distinct relevant items covered, so recall/nDCG stay within [0, 1] even when
+    one pattern (or several docs) would otherwise double-count.
+    """
+    credited: set[str] = set()
+    flags: list[bool] = []
+    for doc in ranked_docs:
+        matched = {rel for rel in relevant_sources if source_matches(doc, rel)}
+        novel = matched - credited
+        flags.append(bool(novel))
+        credited |= novel
+    return flags
 
 
 def evaluate_query(search_fn: SearchFn, query: EvalQuery, top_k: int) -> QueryResult:
