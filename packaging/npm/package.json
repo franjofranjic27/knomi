@@ -1,0 +1,37 @@
+{
+  "name": "knomi",
+  "version": "0.1.0",
+  "description": "Thin npm wrapper for knomi — a token-efficient document ingestion and RAG connector CLI. Installs and delegates to the PyPI package.",
+  "keywords": [
+    "rag",
+    "embeddings",
+    "cli",
+    "vector-database",
+    "wrapper"
+  ],
+  "homepage": "https://github.com/franjofranjic27/knomi#readme",
+  "bugs": {
+    "url": "https://github.com/franjofranjic27/knomi/issues"
+  },
+  "license": "MIT",
+  "author": "Franjo Franjic <franjic.f@bluewin.ch>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/franjofranjic27/knomi.git",
+    "directory": "packaging/npm"
+  },
+  "bin": {
+    "knomi": "bin/knomi.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/knomi.js",
+    "scripts/postinstall.js",
+    "README.md"
+  ]
+}

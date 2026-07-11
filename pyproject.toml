@@ -46,6 +46,20 @@ Issues = "https://github.com/franjofranjic27/knomi/issues"
 knomi = "knomi.cli:app"
 
 [project.optional-dependencies]
+# Vector store backends (installed on demand, imported lazily).
+chroma = ["chromadb>=0.5"]
+pgvector = ["psycopg[binary]>=3.1", "pgvector>=0.3"]
+# Embedding backends.
+cohere = ["cohere>=5.0"]
+ollama = ["ollama>=0.3"]
+# Everything: all optional backends at once.
+all = [
+    "chromadb>=0.5",
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.3",
+    "cohere>=5.0",
+    "ollama>=0.3",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
@@ -53,6 +67,12 @@ dev = [
     "ruff>=0.4",
     "pre-commit>=3.7",
     "httpx>=0.27",
+    # Optional backends needed to run the full test suite.
+    "chromadb>=0.5",
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.3",
+    "cohere>=5.0",
+    "ollama>=0.3",
 ]
 
 [tool.ruff]

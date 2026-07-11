@@ -12,90 +12,203 @@
 ## Features
 
 - **Recursive document ingestion** — scans a folder for PDFs, Markdown, plain text, DOCX, and HTML files.
-- **Token-efficient chunking** — splits text using `tiktoken` so `chunk_size` is always in tokens, not characters.
+- **Token-efficient chunking** — expresses `chunk_size`/`chunk_overlap` in tokens (via `tiktoken`), not characters, across three strategies: `token`, `structure`, `sentence`.
 - **Deduplication** — stores a SHA-256 hash per source file and skips re-embedding unchanged documents.
-- **Pluggable embeddings** — local models via `sentence-transformers` or OpenAI-compatible APIs.
-- **Pluggable vector stores** — Qdrant (default) or ChromaDB; both share the same abstract interface.
+- **Pluggable embeddings** — `openai`, `local` (`sentence-transformers`), `cohere`, or `ollama`.
+- **Pluggable vector stores** — `qdrant` (default), `chroma`, or `pgvector`; all share the same abstract interface.
+- **Named profiles** — bundle store, embedding, and chunking settings in `knomi.json` and switch between them with `--profile`.
 - **RAG serve mode** — exposes the indexed vector store as an HTTP API for Claude, OpenWebUI, Ollama, and other agents.
 - **Single-command infrastructure** — `docker compose up` brings up Qdrant and an optional ingest worker.
 
 ---
 
-## Quick start
+## Installation
 
-### Option A — Docker (recommended)
+knomi is a Python package published on PyPI. The npm and Homebrew options are thin
+wrappers that install and delegate to that same package — they **require Python ≥ 3.12**
+on the machine.
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/franjofranjic27/knomi.git
-cd knomi
+# PyPI (recommended)
+pip install knomi                # or: uv tool install knomi / pipx install knomi
 
-# 2. Start Qdrant
-docker compose up qdrant -d
+# npm — wrapper; runs `pip/pipx/uv install knomi` on postinstall (needs Python ≥ 3.12)
+npm install -g knomi
 
-# 3. Install knomi
-pip install knomi          # or: uv add knomi
-
-# 4. Ingest your documents
-knomi ingest ./docs --db-url http://localhost:6333 --collection my-kb
+# Homebrew — formula builds an isolated virtualenv (needs Python ≥ 3.12)
+brew tap franjofranjic27/knomi
+brew install knomi
 ```
 
-### Option B — pip install only (ChromaDB, zero infrastructure)
+Optional backends ship as extras and are imported lazily — install only what you use:
 
 ```bash
+pip install "knomi[chroma]"      # ChromaDB store
+pip install "knomi[pgvector]"    # Postgres/pgvector store
+pip install "knomi[cohere]"      # Cohere embeddings
+pip install "knomi[ollama]"      # Ollama embeddings
+pip install "knomi[all]"         # everything at once
+```
+
+---
+
+## Quick start
+
+### Option A — Docker + Qdrant (recommended)
+
+```bash
+# 1. Clone the repo (for compose.yml) and start Qdrant
+git clone https://github.com/franjofranjic27/knomi.git
+cd knomi
+docker compose up qdrant -d
+
+# 2. Install knomi and ingest your documents
 pip install knomi
-knomi ingest ./docs --db-url ./chroma_data --collection my-kb
+knomi ingest ./docs --backend qdrant --db-url http://localhost:6333 --collection my-kb
+```
+
+### Option B — zero infrastructure (ChromaDB)
+
+```bash
+pip install "knomi[chroma]"
+knomi ingest ./docs --backend chroma --db-url ./.knomi/chroma --collection my-kb
 ```
 
 ---
 
 ## CLI usage
 
+The global `--profile` / `-p` option selects a profile from `knomi.json` (see
+[Profiles & configuration](#profiles--configuration)) and applies to every subcommand.
+
 ### `ingest` — index documents into the vector store
 
 ```bash
-# Ingest a folder with default settings
+# Ingest a folder using the default (or selected) profile
 knomi ingest ./docs
+
+# Pick a profile and override the chunking strategy
+knomi ingest ./docs --profile cloud --strategy structure
 
 # Custom chunk size, overlap, and collection
 knomi ingest ./docs --chunk-size 512 --chunk-overlap 64 --collection my-kb
 
-# Remote Qdrant instance
-knomi ingest ./docs --db-url http://qdrant:6333 --collection my-kb
-
-# Use OpenAI embeddings
-knomi ingest ./docs --embedding-model text-embedding-3-small
+# Choose store + embedding backends explicitly
+knomi ingest ./docs --backend qdrant --db-url http://qdrant:6333 \
+  --embedding-backend openai --embedding-model text-embedding-3-small --embedding-dim 1536
 ```
 
-### `status` — inspect indexed collections
+### `profiles` — list the profiles defined in `knomi.json`
+
+```bash
+knomi profiles
+# Shows each profile's store, embedding, and chunking backends; marks the default.
+```
+
+### `status` — inspect a collection
 
 ```bash
 knomi status
-# Shows all collections and their document counts.
+# Prints point count and indexed-vector count for the resolved collection.
+```
+
+### `delete` — remove a document from a collection
+
+```bash
+knomi delete <sha256-doc-id>
+# Removes every vector whose doc_id matches the given SHA-256.
 ```
 
 ### `serve` — expose RAG as an HTTP API for agents
 
 ```bash
 knomi serve --port 8080
-# Starts an HTTP server that agents (Claude, OpenWebUI, Ollama) can query.
+# Starts an HTTP server (GET /health, POST /query) that agents can query.
 ```
 
 ---
 
-## Configuration
+## Profiles & configuration
 
-All options can be set as CLI flags, environment variables, or in a `knomi.toml` / `.env` file.
-Precedence: **CLI flags > env vars > config file**.
+### Configuration precedence
 
-| Flag | Env var | Default | Description |
-|------|---------|---------|-------------|
-| `--source-dir` | `SOURCE_DIR` | `.` | Folder to scan for documents |
-| `--chunk-size` | `CHUNK_SIZE` | `512` | Chunk size in tokens |
-| `--chunk-overlap` | `CHUNK_OVERLAP` | `64` | Overlap between consecutive chunks (tokens) |
-| `--embedding-model` | `EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
-| `--db-url` | `KNOMI_DB_URL` | `http://localhost:6333` | Vector store URL or local path |
-| `--collection` | `COLLECTION` | `knomi` | Vector store collection name |
+Settings resolve from four layers, highest priority first:
+
+1. **CLI flags** — e.g. `--backend`, `--strategy`, `--collection`.
+2. **Environment variables** — prefixed with `KNOMI_`, nested groups joined by `__`
+   (e.g. `KNOMI_STORE__COLLECTION`, `KNOMI_EMBEDDING__BACKEND`).
+3. **The selected `knomi.json` profile** — chosen via `--profile`, `KNOMI_PROFILE`, or the
+   file's `default_profile`.
+4. **Built-in defaults**.
+
+### `knomi.json`
+
+A profile bundles the three nested config groups (`store`, `embedding`, `chunking`). knomi
+searches for `knomi.json` in the current working directory first, then in
+`~/.config/knomi/` (`$XDG_CONFIG_HOME/knomi/` if set). Copy
+[`knomi.example.json`](knomi.example.json) to get started.
+
+```json
+{
+  "default_profile": "local",
+  "profiles": {
+    "local": {
+      "store": { "backend": "chroma", "path": "./.knomi/chroma", "collection": "knomi" },
+      "embedding": { "backend": "local", "model": "sentence-transformers/all-MiniLM-L6-v2", "dim": 384 },
+      "chunking": { "strategy": "structure", "chunk_size": 512, "chunk_overlap": 64 }
+    },
+    "cloud": {
+      "store": { "backend": "qdrant", "url": "https://your-cluster.qdrant.io:6333", "collection": "knomi" },
+      "embedding": { "backend": "openai", "model": "text-embedding-3-small", "dim": 1536, "workers": 4 },
+      "chunking": { "strategy": "token", "chunk_size": 512, "chunk_overlap": 64 }
+    }
+  }
+}
+```
+
+Select a profile per invocation:
+
+```bash
+knomi --profile cloud ingest ./docs      # or: KNOMI_PROFILE=cloud knomi ingest ./docs
+```
+
+### Secrets
+
+Secrets are **never** stored in `knomi.json`. They are read from the environment and merged
+into the resolved config based on the selected backend:
+
+| Env var | Used by |
+|---------|---------|
+| `OPENAI_API_KEY` | `embedding.backend = openai` |
+| `COHERE_API_KEY` | `embedding.backend = cohere` |
+| `QDRANT_API_KEY` | `store.backend = qdrant` (Qdrant Cloud) |
+| `KNOMI_PG_DSN` | `store.backend = pgvector` |
+
+### Backends & strategies
+
+| Group | Config key | Values | Notes |
+|-------|-----------|--------|-------|
+| Store | `store.backend` | `qdrant` (default), `chroma`, `pgvector` | `chroma`/`pgvector` need the matching extra |
+| Embedding | `embedding.backend` | `openai` (default), `local`, `cohere`, `ollama` | `cohere`/`ollama` need the matching extra |
+| Chunking | `chunking.strategy` | `token` (default), `structure`, `sentence` | all express sizes in tokens |
+
+### Selected fields
+
+| Config key | Env var | Default | Description |
+|-----------|---------|---------|-------------|
+| `source_dir` | `KNOMI_SOURCE_DIR` | `.` | Folder to scan for documents |
+| `store.backend` | `KNOMI_STORE__BACKEND` | `qdrant` | Vector store backend |
+| `store.url` | `KNOMI_STORE__URL` | `http://localhost:6333` | Qdrant server URL |
+| `store.path` | `KNOMI_STORE__PATH` | `None` | On-disk path for local backends |
+| `store.collection` | `KNOMI_STORE__COLLECTION` | `knomi` | Collection / table name |
+| `embedding.backend` | `KNOMI_EMBEDDING__BACKEND` | `openai` | Embedding backend |
+| `embedding.model` | `KNOMI_EMBEDDING__MODEL` | `text-embedding-3-small` | Model name or ID |
+| `embedding.dim` | `KNOMI_EMBEDDING__DIM` | `1536` | Output vector dimension |
+| `chunking.strategy` | `KNOMI_CHUNKING__STRATEGY` | `token` | Chunking strategy |
+| `chunking.chunk_size` | `KNOMI_CHUNKING__CHUNK_SIZE` | `512` | Max chunk size in tokens |
+| `chunking.chunk_overlap` | `KNOMI_CHUNKING__CHUNK_OVERLAP` | `64` | Token overlap between chunks |
+| `serve_port` | `KNOMI_SERVE_PORT` | `8080` | Port for the RAG HTTP server |
+| `top_k` | `KNOMI_TOP_K` | `5` | Chunks returned per query |
 
 ---
 

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from knomi.config import Config
 from knomi.ingest.embedder import build_embedder
-from knomi.store.qdrant import QdrantStore
+from knomi.store.factory import build_store
 
 
 class QueryRequest(BaseModel):
@@ -54,7 +54,7 @@ def create_app(config: Config) -> FastAPI:
         A configured FastAPI application instance.
     """
     embedder = build_embedder(config)
-    store = QdrantStore(config)
+    store = build_store(config)
 
     app = FastAPI(
         title="knomi RAG API",
@@ -68,7 +68,7 @@ def create_app(config: Config) -> FastAPI:
     @app.get("/health", summary="Liveness check")
     def health() -> dict[str, str]:
         """Return OK and the active collection name."""
-        return {"status": "ok", "collection": config.collection}
+        return {"status": "ok", "collection": config.store.collection}
 
     @app.post("/query", response_model=QueryResponse, summary="Semantic search")
     def query(req: QueryRequest) -> QueryResponse:
@@ -80,7 +80,7 @@ def create_app(config: Config) -> FastAPI:
                 ChunkResult(text=h.chunk.text, score=h.score, metadata=h.chunk.metadata)
                 for h in hits
             ],
-            collection=config.collection,
+            collection=config.store.collection,
         )
 
     return app

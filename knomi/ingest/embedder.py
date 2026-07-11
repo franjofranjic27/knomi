@@ -3,10 +3,12 @@
 Responsibilities
 ----------------
 - Accept a batch of text strings and return a list of float vectors.
-- Support two backends, selected by the ``embedding_model`` config value:
-    - **Local** (HuggingFace ``sentence-transformers``): no API key required.
-    - **OpenAI API**: ``text-embedding-3-small`` / ``text-embedding-3-large``.
-- Respect ``embedding_batch_size`` to avoid OOM / rate-limit errors.
+- Support four backends, selected by ``config.embedding.backend``:
+    - **local**  (HuggingFace ``sentence-transformers``): no API key required.
+    - **openai** API: ``text-embedding-3-small`` / ``text-embedding-3-large``.
+    - **cohere** API: ``embed-english-v3.0`` and friends.
+    - **ollama** (self-hosted): e.g. ``nomic-embed-text`` via a local server.
+- Respect ``embedding.batch_size`` to avoid OOM / rate-limit errors.
 - Optionally embed batches concurrently via ``embed_chunks(workers=N)``.
 """
 
@@ -15,6 +17,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import openai as _openai
 from tenacity import (
@@ -122,12 +125,66 @@ class OpenAIEmbedder(BaseEmbedder):
         return [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
 
 
-def build_embedder(config: Config) -> BaseEmbedder:
-    """Factory — return the correct embedder for *config*.
+class CohereEmbedder(BaseEmbedder):
+    """Embedding via the Cohere Embed API."""
 
-    If ``embedding_model`` starts with ``text-embedding-``, use OpenAI;
-    otherwise treat it as a HuggingFace sentence-transformers model ID.
+    def __init__(self, model_name: str, api_key: str | None = None) -> None:
+        import cohere
+
+        self.client = cohere.Client(api_key=api_key)
+        self.model = model_name
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=60),
+        stop=stop_after_attempt(5),
+        reraise=True,
+        before_sleep=before_sleep_log(log, logging.WARNING),
+    )
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        response = self.client.embed(texts=texts, model=self.model, input_type="search_document")
+        embeddings: Any = response.embeddings
+        return [list(v) for v in embeddings]
+
+
+class OllamaEmbedder(BaseEmbedder):
+    """Embedding via a self-hosted Ollama server."""
+
+    def __init__(self, model_name: str, host: str | None = None) -> None:
+        import ollama
+
+        self.client = ollama.Client(host=host) if host else ollama.Client()
+        self.model = model_name
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=30),
+        stop=stop_after_attempt(3),
+        reraise=True,
+        before_sleep=before_sleep_log(log, logging.WARNING),
+    )
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        # Ollama's embed endpoint takes a batch and returns one vector per input.
+        response = self.client.embed(model=self.model, input=texts)
+        return [list(v) for v in response["embeddings"]]
+
+
+def build_embedder(config: Config) -> BaseEmbedder:
+    """Factory — return the embedder for ``config.embedding.backend``.
+
+    As a fallback (backend unset / legacy configs), an ``embedding.model`` that
+    starts with ``text-embedding-`` is treated as OpenAI, otherwise as a local
+    sentence-transformers model.
     """
-    if config.embedding_model.startswith("text-embedding-"):
-        return OpenAIEmbedder(config.embedding_model, api_key=config.openai_api_key)
-    return LocalEmbedder(config.embedding_model)
+    e = config.embedding
+    backend = e.backend
+    if backend == "openai":
+        return OpenAIEmbedder(e.model, api_key=e.api_key)
+    if backend == "cohere":
+        return CohereEmbedder(e.model, api_key=e.api_key)
+    if backend == "ollama":
+        return OllamaEmbedder(e.model, host=e.host)
+    if backend == "local":
+        return LocalEmbedder(e.model)
+    # Fallback heuristic for legacy/unspecified backends.
+    if e.model.startswith("text-embedding-"):
+        return OpenAIEmbedder(e.model, api_key=e.api_key)
+    return LocalEmbedder(e.model)

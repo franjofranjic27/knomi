@@ -35,14 +35,14 @@ def _make_client(
     collection: str = "test-col",
 ) -> tuple[TestClient, MagicMock, MagicMock]:
     """Return a TestClient with mocked embedder and store."""
-    config = Config(collection=collection)
+    config = Config(store={"collection": collection})
     mock_embedder = MagicMock()
     mock_embedder.embed_query.return_value = [0.1, 0.2, 0.3, 0.4]
     mock_store = MagicMock()
     mock_store.search.return_value = _search_results()
     with (
         patch("knomi.serve.server.build_embedder", return_value=mock_embedder),
-        patch("knomi.serve.server.QdrantStore", return_value=mock_store),
+        patch("knomi.serve.server.build_store", return_value=mock_store),
     ):
         app = create_app(config)
     return TestClient(app), mock_embedder, mock_store

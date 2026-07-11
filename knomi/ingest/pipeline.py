@@ -46,15 +46,16 @@ def run_pipeline(
     Returns:
         ``PipelineResult`` with counts of processed / skipped / moved / failed files.
     """
-    from knomi.ingest.chunker import chunk
+    from knomi.ingest.chunker import build_chunker
     from knomi.ingest.embedder import build_embedder
     from knomi.ingest.parser import parse
     from knomi.ingest.scanner import scan
-    from knomi.store.qdrant import QdrantStore
+    from knomi.store.factory import build_store
 
     result = PipelineResult()
-    store = QdrantStore(config)
+    store = build_store(config)
     embedder = build_embedder(config)
+    chunker = build_chunker(config)
 
     log.info("Starting ingest pipeline for %s", config.source_dir)
 
@@ -91,17 +92,11 @@ def run_pipeline(
             result.failed_files.append(scanned.path)
             continue
 
-        chunks = chunk(
-            text,
-            source=scanned.path,
-            doc_id=scanned.sha256,
-            chunk_size=config.chunk_size,
-            chunk_overlap=config.chunk_overlap,
-        )
+        chunks = chunker.split(text, source=scanned.path, doc_id=scanned.sha256)
         vectors = embedder.embed_chunks(
             chunks,
-            batch_size=config.embedding_batch_size,
-            workers=config.embedding_workers,
+            batch_size=config.embedding.batch_size,
+            workers=config.embedding.workers,
         )
         store.upsert(chunks, vectors)
         result.total_chunks += len(chunks)

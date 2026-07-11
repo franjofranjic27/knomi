@@ -39,6 +39,9 @@ data/
 *.pem
 *.key
 
+# Local profile config (may contain inline api_key/dsn) — keep the example tracked
+knomi.json
+
 # IDE
 .vscode/
 .idea/

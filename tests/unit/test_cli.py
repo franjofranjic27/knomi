@@ -69,13 +69,13 @@ def test_status_prints_collection_info() -> None:
     assert "{" not in result.output
 
 
-def test_ingest_passes_batch_size_to_config(tmp_path: Path) -> None:
+def test_ingest_passes_chunk_size_to_config(tmp_path: Path) -> None:
     mock_result = PipelineResult(total_files=1, total_chunks=1, total_vectors=1)
     with patch("knomi.ingest.pipeline.run_pipeline", return_value=mock_result) as mock_run:
-        result = runner.invoke(app, ["ingest", str(tmp_path), "--embedding-batch-size", "32"])
+        result = runner.invoke(app, ["ingest", str(tmp_path), "--chunk-size", "32"])
     assert result.exit_code == 0
     config_arg = mock_run.call_args[0][0]
-    assert config_arg.embedding_batch_size == 32
+    assert config_arg.chunking.chunk_size == 32
 
 
 def test_serve_passes_top_k_to_config() -> None:

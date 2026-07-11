@@ -17,14 +17,14 @@ def _make_chunks(n: int) -> list[Chunk]:
 
 
 def test_build_embedder_openai_routing() -> None:
-    config = Config(embedding_model="text-embedding-3-small")
+    config = Config(embedding={"backend": "openai", "model": "text-embedding-3-small"})
     with patch("knomi.ingest.embedder.OpenAIEmbedder.__init__", return_value=None):
         embedder = build_embedder(config)
     assert isinstance(embedder, OpenAIEmbedder)
 
 
 def test_build_embedder_local_routing() -> None:
-    config = Config(embedding_model="all-MiniLM-L6-v2")
+    config = Config(embedding={"backend": "local", "model": "all-MiniLM-L6-v2"})
     with patch("knomi.ingest.embedder.LocalEmbedder.__init__", return_value=None):
         embedder = build_embedder(config)
     assert isinstance(embedder, LocalEmbedder)
