@@ -126,6 +126,26 @@ knomi serve --port 8080
 # Starts an HTTP server (GET /health, POST /query) that agents can query.
 ```
 
+### `eval` — measure retrieval quality against a gold set
+
+Turn "did I pick the right embedding model / chunking strategy?" from a guess
+into a measurement. A **gold set** (JSON or JSONL) lists questions and the source
+documents that *should* be retrieved; `knomi eval` reports Recall@k, nDCG@k,
+Hit@k and MRR for the selected profile against an already-indexed collection.
+
+```bash
+# Gold set (JSONL — one question per line, document-level relevance):
+#   {"question": "What is self-attention?", "relevant_sources": ["Transformer.pdf"]}
+
+knomi --profile local eval gold.jsonl --collection uni-sg --top-k 10
+knomi --profile local eval gold.jsonl --json report.json   # machine-readable dump
+```
+
+Because each profile is a full config (embedding × chunking × store), evaluating
+is an A/B test — run the same gold set under `-p local` vs `-p cloud` and compare
+the numbers. See `eval.example.jsonl` for a template. `relevant_sources` are
+matched leniently (basename / substring), so you only need the file name.
+
 ---
 
 ## Profiles & configuration

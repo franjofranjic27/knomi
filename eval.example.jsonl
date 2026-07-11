@@ -1,0 +1,8 @@
+{"id": "q1", "question": "What is the transformer self-attention mechanism?", "relevant_sources": ["Self-Attention_Transformer.pdf", "Speech and Language Processing"]}
+{"id": "q2", "question": "How does backpropagation compute gradients in neural networks?", "relevant_sources": ["BackProp.pdf", "Deep Learning (Ian Goodfellow"]}
+{"id": "q3", "question": "Explain convolutional neural networks for image recognition.", "relevant_sources": ["ConvNets.pdf", "Deep Learning (Ian Goodfellow"]}
+{"id": "q4", "question": "What are the core building blocks of domain-driven design?", "relevant_sources": ["Domain-Driven Design"]}
+{"id": "q5", "question": "Describe the principles of public-key cryptography.", "relevant_sources": ["Cryptography and Network Security"]}
+{"id": "q6", "question": "What is the BDI model in multi-agent systems?", "relevant_sources": ["Multiagent Systems", "Multi-Agent Oriented Programming"]}
+{"id": "q7", "question": "How are RDFS and OWL used to model linked data on the semantic web?", "relevant_sources": ["Semantic Web for the Working Ontologist"]}
+{"id": "q8", "question": "What is unsupervised representation learning with autoencoders?", "relevant_sources": ["Autoencoder.pdf", "Unsupervised_Learning.pdf"]}

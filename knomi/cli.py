@@ -7,6 +7,7 @@ serve     Expose the vector store as a RAG HTTP API.
 status    Print collection info from the connected vector store.
 delete    Remove a document's vectors from the collection.
 profiles  List the profiles defined in knomi.json.
+eval      Score retrieval quality for the current profile against a gold set.
 
 Configuration precedence: CLI flags > env (``KNOMI_``) > selected ``knomi.json``
 profile > defaults. Unset flags default to ``None`` so they never clobber the
@@ -213,3 +214,69 @@ def profiles() -> None:
             f"{chunking.get('strategy', '-')}",
         )
     console.print(table)
+
+
+@app.command()
+def eval(  # noqa: A001  (Typer command name; shadows builtin intentionally)
+    ctx: typer.Context,
+    gold_set: Path = typer.Argument(..., help="Gold set file (JSON or JSONL)."),
+    top_k: int = typer.Option(10, "--top-k", help="Chunks retrieved per query."),
+    backend: str | None = typer.Option(None, help="Store backend: qdrant|chroma|pgvector."),
+    db_url: str | None = typer.Option(None, "--db-url", help="Vector DB server URL or path."),
+    collection: str | None = typer.Option(None, help="Collection / table name."),
+    json_out: Path | None = typer.Option(
+        None, "--json", help="Also write the full report as JSON to this path."
+    ),
+) -> None:
+    """Score retrieval quality for the current profile against a GOLD_SET.
+
+    The gold set lists questions and the source documents that should be
+    retrieved. Metrics (Recall@k, nDCG@k, Hit@k, MRR) are reported per rank
+    cutoff so you can compare profiles, embedding models, and chunking
+    strategies objectively — e.g. ``knomi -p cloud eval gold.jsonl`` vs
+    ``knomi -p local eval gold.jsonl``.
+    """
+    import json as _json
+
+    from rich.table import Table
+
+    from knomi.eval.dataset import load_eval_set
+    from knomi.eval.runner import run_eval
+    from knomi.store.factory import store_target
+
+    config = resolve_config(
+        profile=_profile(ctx),
+        overrides={"store": _clean({"backend": backend, "url": db_url, "collection": collection})},
+    )
+    try:
+        queries = load_eval_set(gold_set)
+    except (FileNotFoundError, ValueError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    console.print(
+        f"[bold]knomi eval[/bold] — {len(queries)} queries · "
+        f"{config.embedding.backend}:{config.embedding.model} · "
+        f"chunk={config.chunking.strategy} · store={config.store.backend} "
+        f"@ [cyan]{store_target(config.store)}[/cyan] (collection: {config.store.collection})"
+    )
+    report = run_eval(config, queries, top_k=top_k)
+
+    table = Table(title=f"Retrieval quality (n={report.n_queries}, top_k={report.top_k})")
+    table.add_column("Metric", style="bold")
+    for k in report.cutoffs:
+        table.add_column(f"@{k}", justify="right")
+    for name in ("hit", "recall", "ndcg"):
+        row = [name.upper()] + [f"{report.metrics[f'{name}@{k}']:.3f}" for k in report.cutoffs]
+        table.add_row(*row)
+    console.print(table)
+    console.print(f"[bold]MRR[/bold] (@{report.top_k}): {report.metrics['mrr']:.3f}")
+
+    misses = [q for q in report.per_query if q.first_relevant_rank is None]
+    if misses:
+        console.print(f"[yellow]{len(misses)} query(ies) retrieved no relevant doc:[/yellow]")
+        for q in misses[:10]:
+            console.print(f"  [dim]· {q.question}[/dim]")
+
+    if json_out is not None:
+        json_out.write_text(_json.dumps(report.to_dict(), indent=2), encoding="utf-8")
+        console.print(f"[green]Report written to[/green] {json_out}")
