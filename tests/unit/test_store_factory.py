@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from knomi.config import Config
-from knomi.store.factory import build_store
+from knomi.config import Config, StoreSettings
+from knomi.store.factory import build_store, store_target
 
 
 def test_build_store_returns_qdrant(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,6 +70,50 @@ def test_build_store_unknown_backend_raises() -> None:
     object.__setattr__(config.store, "backend", "mystery")
     with pytest.raises(ValueError, match="Unknown store backend"):
         build_store(config)
+
+
+# --------------------------------------------------------------------------- #
+# store_target: secret-safe, backend-aware display of the store location.
+# StoreSettings is built directly so the result is independent of any knomi.json
+# profile that may sit in the working directory.
+# --------------------------------------------------------------------------- #
+def test_store_target_chroma_shows_path() -> None:
+    store = StoreSettings(backend="chroma", path="./.knomi/chroma")
+    assert store_target(store) == "./.knomi/chroma"
+
+
+def test_store_target_chroma_falls_back_to_url() -> None:
+    store = StoreSettings(backend="chroma", url="http://localhost:8000")
+    assert store_target(store) == "http://localhost:8000"
+
+
+def test_store_target_qdrant_shows_url() -> None:
+    store = StoreSettings(backend="qdrant", url="https://cluster.qdrant.io:6333")
+    assert store_target(store) == "https://cluster.qdrant.io:6333"
+
+
+def test_store_target_pgvector_uri_omits_password() -> None:
+    store = StoreSettings(
+        backend="pgvector", dsn="postgresql://user:secret@db.example.com:5432/knomi"
+    )
+    target = store_target(store)
+    assert target == "db.example.com:5432/knomi"
+    assert "secret" not in target
+
+
+def test_store_target_pgvector_keyword_form_omits_password() -> None:
+    store = StoreSettings(
+        backend="pgvector",
+        dsn="host=db.example.com port=5432 dbname=knomi user=u password=secret",
+    )
+    target = store_target(store)
+    assert target == "db.example.com:5432/knomi"
+    assert "secret" not in target
+
+
+def test_store_target_pgvector_without_dsn() -> None:
+    store = StoreSettings(backend="pgvector")
+    assert store_target(store) == "pgvector"
 
 
 # --------------------------------------------------------------------------- #

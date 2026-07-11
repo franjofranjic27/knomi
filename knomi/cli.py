@@ -146,14 +146,15 @@ def status(
     """Print collection statistics from the connected vector store."""
     from rich.table import Table
 
-    from knomi.store.factory import build_store
+    from knomi.store.factory import build_store, store_target
 
     config = resolve_config(
         profile=_profile(ctx),
         overrides={"store": _clean({"backend": backend, "url": db_url, "collection": collection})},
     )
     console.print(
-        f"[bold]knomi status[/bold] — {config.store.backend} @ [cyan]{config.store.url}[/cyan]"
+        f"[bold]knomi status[/bold] — {config.store.backend} @ "
+        f"[cyan]{store_target(config.store)}[/cyan]"
     )
     info = build_store(config).describe()
     table = Table(title=f"Collection: {info['name']}", show_header=False)
