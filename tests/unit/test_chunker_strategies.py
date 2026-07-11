@@ -101,3 +101,20 @@ def test_build_chunker_selects_class(strategy: str, expected_cls: type[BaseChunk
     chunker = build_chunker(Config(chunking={"strategy": strategy}))
     assert isinstance(chunker, expected_cls)
     assert chunker.settings.strategy == strategy
+
+
+@pytest.mark.parametrize("strategy", ["token", "structure", "sentence"])
+def test_chunker_handles_literal_special_tokens(strategy: str) -> None:
+    """Documents containing special-token strings (e.g. '<|endoftext|>', common
+    in ML/NLP literature) must be encoded as plain text, not raise a ValueError.
+    """
+    text = (
+        "Tokenizers reserve markers. The GPT vocabulary uses <|endoftext|> to "
+        "separate documents. Some models also add <|endofprompt|> tokens.\n\n"
+        "A second paragraph repeats the token <|endoftext|> once more."
+    )
+    # Force windowing so the encode path is exercised on the special-token text.
+    chunker = build_chunker(Config(chunking={"strategy": strategy, "chunk_size": 12}))
+    chunks = chunker.split(text, source=_SOURCE, doc_id=_DOC_ID)
+    assert chunks
+    assert "<|endoftext|>" in " ".join(c.text for c in chunks)

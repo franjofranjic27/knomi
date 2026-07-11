@@ -92,13 +92,20 @@ def run_pipeline(
             result.failed_files.append(scanned.path)
             continue
 
-        chunks = chunker.split(text, source=scanned.path, doc_id=scanned.sha256)
-        vectors = embedder.embed_chunks(
-            chunks,
-            batch_size=config.embedding.batch_size,
-            workers=config.embedding.workers,
-        )
-        store.upsert(chunks, vectors)
+        try:
+            chunks = chunker.split(text, source=scanned.path, doc_id=scanned.sha256)
+            vectors = embedder.embed_chunks(
+                chunks,
+                batch_size=config.embedding.batch_size,
+                workers=config.embedding.workers,
+            )
+            store.upsert(chunks, vectors)
+        except Exception:
+            # One malformed document must never abort the whole run.
+            log.warning("Failed to index %s", scanned.path, exc_info=True)
+            result.failed_files.append(scanned.path)
+            continue
+
         result.total_chunks += len(chunks)
         result.total_vectors += len(vectors)
         log.debug("Indexed %s: %d chunks, %d vectors", scanned.path.name, len(chunks), len(vectors))

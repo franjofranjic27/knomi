@@ -88,7 +88,10 @@ def chunk(
     import tiktoken
 
     enc = tiktoken.get_encoding(encoding_name)
-    tokens = enc.encode(text)
+    # disallowed_special=() so documents that literally contain special-token
+    # strings (e.g. "<|endoftext|>", common in ML/NLP literature) are encoded as
+    # plain text instead of raising a ValueError.
+    tokens = enc.encode(text, disallowed_special=())
 
     if len(tokens) <= chunk_size:
         return _make_chunks([text], source, doc_id)
@@ -147,12 +150,12 @@ def _pack_units(
         unit = unit.strip()
         if not unit:
             continue
-        n = len(enc.encode(unit))
+        n = len(enc.encode(unit, disallowed_special=()))
 
         # A single oversized unit: window it on its own after flushing.
         if n > chunk_size:
             flush()
-            tokens = enc.encode(unit)
+            tokens = enc.encode(unit, disallowed_special=())
             step = max(1, chunk_size - chunk_overlap)
             for i in range(0, len(tokens), step):
                 chunks.append(enc.decode(tokens[i : i + chunk_size]).strip())
@@ -163,10 +166,12 @@ def _pack_units(
             # Carry overlap: re-seed with the trailing chunk_overlap tokens of the
             # chunk we just flushed, so context continues across the boundary.
             if chunk_overlap > 0 and chunks:
-                carry_text = enc.decode(enc.encode(chunks[-1])[-chunk_overlap:]).strip()
+                carry_text = enc.decode(
+                    enc.encode(chunks[-1], disallowed_special=())[-chunk_overlap:]
+                ).strip()
                 if carry_text:
                     current = [carry_text]
-                    current_tokens = len(enc.encode(carry_text))
+                    current_tokens = len(enc.encode(carry_text, disallowed_special=()))
 
         current.append(unit)
         current_tokens += n
