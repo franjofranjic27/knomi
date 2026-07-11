@@ -146,6 +146,33 @@ is an A/B test — run the same gold set under `-p local` vs `-p cloud` and comp
 the numbers. See `eval.example.jsonl` for a template. `relevant_sources` are
 matched leniently (basename / substring), so you only need the file name.
 
+### Reranking (optional second stage)
+
+Vector search is fast but scores query and document independently. A **cross-encoder
+reranker** re-scores the top candidates jointly, which is often (but not always!)
+more accurate. It is opt-in per profile:
+
+```json
+"reranking": {
+  "enabled": true,
+  "backend": "local",
+  "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "top_n": 20
+}
+```
+
+The store returns `top_n` candidates, the reranker re-scores them down to your
+`top_k`. Backends: `local` (HuggingFace `CrossEncoder`, no API key) or `cohere`.
+Toggle it ad hoc for A/B testing:
+
+```bash
+knomi -p local eval gold.jsonl --collection uni-sg              # baseline
+knomi -p local eval gold.jsonl --collection uni-sg --rerank     # with reranking
+```
+
+> Reranking is **not** a guaranteed win — a reranker trained on a different domain,
+> or a small gold set, can regress. Measure it with `knomi eval` before enabling it.
+
 ---
 
 ## Profiles & configuration

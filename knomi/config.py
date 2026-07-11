@@ -92,6 +92,19 @@ class ChunkingSettings(BaseModel):
     )
 
 
+class RerankingSettings(BaseModel):
+    """Cross-encoder reranking settings (opt-in second retrieval stage)."""
+
+    enabled: bool = Field(False, description="Re-score candidates with a cross-encoder.")
+    backend: Literal["local", "cohere"] = Field("local", description="Reranker backend.")
+    model: str = Field(
+        "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        description="Cross-encoder model (HF CrossEncoder id or Cohere rerank model).",
+    )
+    top_n: int = Field(20, gt=0, description="Candidates fetched from the store before reranking.")
+    api_key: str | None = Field(None, description="API key for API-backed rerankers.")
+
+
 # --------------------------------------------------------------------------- #
 # Profile settings source
 # --------------------------------------------------------------------------- #
@@ -172,6 +185,7 @@ class Config(BaseSettings):
     store: StoreSettings = Field(default_factory=StoreSettings)
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
+    reranking: RerankingSettings = Field(default_factory=RerankingSettings)
 
     # --- Serve ---
     serve_host: str = Field("0.0.0.0", description="Host for the RAG HTTP server.")
@@ -207,6 +221,12 @@ def _resolve_secrets(config: Config) -> None:
         config.store.api_key = os.environ.get("QDRANT_API_KEY")
     if config.store.dsn is None and config.store.backend == "pgvector":
         config.store.dsn = os.environ.get("KNOMI_PG_DSN")
+    if (
+        config.reranking.api_key is None
+        and config.reranking.enabled
+        and config.reranking.backend == "cohere"
+    ):
+        config.reranking.api_key = os.environ.get("COHERE_API_KEY")
 
 
 def resolve_config(

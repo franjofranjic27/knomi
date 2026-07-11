@@ -115,6 +115,9 @@ def serve(
     host: str | None = typer.Option(None, help="Server host."),
     port: int | None = typer.Option(None, help="Server port."),
     top_k: int | None = typer.Option(None, "--top-k", help="Default results per query."),
+    rerank: bool | None = typer.Option(
+        None, "--rerank/--no-rerank", help="Enable/disable cross-encoder reranking."
+    ),
 ) -> None:
     """Start an HTTP server that exposes the vector store as a RAG endpoint."""
     from knomi.serve.server import start_server
@@ -123,6 +126,7 @@ def serve(
         profile=_profile(ctx),
         overrides={
             "store": _clean({"backend": backend, "url": db_url, "collection": collection}),
+            "reranking": _clean({"enabled": rerank}),
             "serve_host": host,
             "serve_port": port,
             "top_k": top_k,
@@ -221,6 +225,10 @@ def eval(  # noqa: A001  (Typer command name; shadows builtin intentionally)
     ctx: typer.Context,
     gold_set: Path = typer.Argument(..., help="Gold set file (JSON or JSONL)."),
     top_k: int = typer.Option(10, "--top-k", help="Chunks retrieved per query."),
+    rerank: bool | None = typer.Option(
+        None, "--rerank/--no-rerank", help="Enable/disable cross-encoder reranking."
+    ),
+    rerank_model: str | None = typer.Option(None, "--rerank-model", help="Cross-encoder model."),
     backend: str | None = typer.Option(None, help="Store backend: qdrant|chroma|pgvector."),
     db_url: str | None = typer.Option(None, "--db-url", help="Vector DB server URL or path."),
     collection: str | None = typer.Option(None, help="Collection / table name."),
@@ -246,17 +254,25 @@ def eval(  # noqa: A001  (Typer command name; shadows builtin intentionally)
 
     config = resolve_config(
         profile=_profile(ctx),
-        overrides={"store": _clean({"backend": backend, "url": db_url, "collection": collection})},
+        overrides={
+            "store": _clean({"backend": backend, "url": db_url, "collection": collection}),
+            "reranking": _clean({"enabled": rerank, "model": rerank_model}),
+        },
     )
     try:
         queries = load_eval_set(gold_set)
     except (FileNotFoundError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
 
+    rerank_info = (
+        f"rerank={config.reranking.backend}:{config.reranking.model}"
+        if config.reranking.enabled
+        else "rerank=off"
+    )
     console.print(
         f"[bold]knomi eval[/bold] — {len(queries)} queries · "
         f"{config.embedding.backend}:{config.embedding.model} · "
-        f"chunk={config.chunking.strategy} · store={config.store.backend} "
+        f"chunk={config.chunking.strategy} · {rerank_info} · store={config.store.backend} "
         f"@ [cyan]{store_target(config.store)}[/cyan] (collection: {config.store.collection})"
     )
     report = run_eval(config, queries, top_k=top_k)

@@ -17,6 +17,10 @@ from dataclasses import dataclass, field
 from knomi.config import Config
 from knomi.eval import metrics
 from knomi.eval.dataset import EvalQuery, source_matches
+from knomi.store.base import SearchResult
+
+# A search function maps (question, top_k) to ranked results — e.g. Retriever.search.
+SearchFn = Callable[[str, int], list[SearchResult]]
 
 _DEFAULT_CUTOFFS = (1, 3, 5, 10)
 
@@ -85,15 +89,9 @@ def _relevance_flags(ranked_docs: list[str], relevant_sources: tuple[str, ...]) 
     return [any(source_matches(doc, rel) for rel in relevant_sources) for doc in ranked_docs]
 
 
-def evaluate_query(
-    store: object,
-    embedder: object,
-    query: EvalQuery,
-    top_k: int,
-) -> QueryResult:
+def evaluate_query(search_fn: SearchFn, query: EvalQuery, top_k: int) -> QueryResult:
     """Retrieve for a single *query* and return its ranked relevance."""
-    vector = embedder.embed_query(query.question)  # type: ignore[attr-defined]
-    hits = store.search(vector, top_k=top_k)  # type: ignore[attr-defined]
+    hits = search_fn(query.question, top_k)
     ranked_docs = _rank_documents([h.chunk.metadata.get("source", "") for h in hits])
     return QueryResult(
         id=query.id,
@@ -141,20 +139,18 @@ def run_eval(
     Returns:
         An :class:`EvalReport` with aggregate metrics and per-query detail.
     """
-    from knomi.ingest.embedder import build_embedder
-    from knomi.store.factory import build_store
+    from knomi.retrieval import Retriever
 
     if cutoffs is None:
         cutoffs = sorted({c for c in _DEFAULT_CUTOFFS if c <= top_k} | {top_k})
 
-    store = build_store(config)
-    embedder = build_embedder(config)
+    retriever = Retriever(config)
 
     results: list[QueryResult] = []
     for query in queries:
         if progress_callback:
             progress_callback(query.question)
-        results.append(evaluate_query(store, embedder, query, top_k))
+        results.append(evaluate_query(retriever.search, query, top_k))
 
     return EvalReport(
         top_k=top_k,
