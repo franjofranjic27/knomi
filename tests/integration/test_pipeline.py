@@ -28,12 +28,9 @@ def test_ingest_pdf_creates_vectors(tmp_path: Path, qdrant_url: str) -> None:
     _write_minimal_pdf(pdf_path, "Integration test PDF content for embedding.")
     config = Config(
         source_dir=tmp_path,
-        embedding_model="all-MiniLM-L6-v2",
-        embedding_dim=384,
-        db_url=qdrant_url,
-        collection="test-ingest-pipeline",
-        chunk_size=256,
-        chunk_overlap=32,
+        embedding={"backend": "local", "model": "all-MiniLM-L6-v2", "dim": 384},
+        store={"backend": "qdrant", "url": qdrant_url, "collection": "test-ingest-pipeline"},
+        chunking={"chunk_size": 256, "chunk_overlap": 32},
     )
     result = run_pipeline(config)
     assert result.total_files >= 1
@@ -46,12 +43,9 @@ def test_ingest_dedup_skips_on_second_run(tmp_path: Path, qdrant_url: str) -> No
     _write_minimal_pdf(pdf_path, "Dedup test PDF content.")
     config = Config(
         source_dir=tmp_path,
-        embedding_model="all-MiniLM-L6-v2",
-        embedding_dim=384,
-        db_url=qdrant_url,
-        collection="test-ingest-dedup",
-        chunk_size=256,
-        chunk_overlap=32,
+        embedding={"backend": "local", "model": "all-MiniLM-L6-v2", "dim": 384},
+        store={"backend": "qdrant", "url": qdrant_url, "collection": "test-ingest-dedup"},
+        chunking={"chunk_size": 256, "chunk_overlap": 32},
     )
     first = run_pipeline(config)
     assert first.total_files >= 1
@@ -70,20 +64,15 @@ def test_serve_query_returns_results(tmp_path: Path, qdrant_url: str) -> None:
     txt_path.write_text("The quick brown fox jumps over the lazy dog. " * 10)
     ingest_config = Config(
         source_dir=tmp_path,
-        embedding_model="all-MiniLM-L6-v2",
-        embedding_dim=384,
-        db_url=qdrant_url,
-        collection="test-serve-query",
-        chunk_size=64,
-        chunk_overlap=8,
+        embedding={"backend": "local", "model": "all-MiniLM-L6-v2", "dim": 384},
+        store={"backend": "qdrant", "url": qdrant_url, "collection": "test-serve-query"},
+        chunking={"chunk_size": 64, "chunk_overlap": 8},
     )
     run_pipeline(ingest_config)
 
     serve_config = Config(
-        embedding_model="all-MiniLM-L6-v2",
-        embedding_dim=384,
-        db_url=qdrant_url,
-        collection="test-serve-query",
+        embedding={"backend": "local", "model": "all-MiniLM-L6-v2", "dim": 384},
+        store={"backend": "qdrant", "url": qdrant_url, "collection": "test-serve-query"},
     )
     client = TestClient(create_app(serve_config))
     response = client.post("/query", json={"query": "quick brown fox", "top_k": 3})
@@ -100,12 +89,9 @@ def test_delete_removes_vectors(tmp_path: Path, qdrant_url: str) -> None:
     txt_path.write_text("Document that will be deleted after indexing. " * 5)
     config = Config(
         source_dir=tmp_path,
-        embedding_model="all-MiniLM-L6-v2",
-        embedding_dim=384,
-        db_url=qdrant_url,
-        collection="test-delete-vectors",
-        chunk_size=64,
-        chunk_overlap=8,
+        embedding={"backend": "local", "model": "all-MiniLM-L6-v2", "dim": 384},
+        store={"backend": "qdrant", "url": qdrant_url, "collection": "test-delete-vectors"},
+        chunking={"chunk_size": 64, "chunk_overlap": 8},
     )
     result = run_pipeline(config)
     assert result.total_files == 1

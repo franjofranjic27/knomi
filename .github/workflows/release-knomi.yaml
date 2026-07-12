@@ -1,0 +1,103 @@
+name: Release knomi
+
+# Single source of truth for releasing knomi across all channels.
+# Replaces the previous release.yml so that only ONE workflow publishes to PyPI
+# per tag (two workflows on the same `v*.*.*` tag would double-upload and fail).
+#
+# Fan-out: PyPI is the canonical artifact; npm and Homebrew are thin wrappers
+# that depend on the PyPI release having succeeded first.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Canonical release: build the sdist/wheel and publish to PyPI via OIDC
+  # trusted publishing. Identical behaviour to the old release.yml.
+  # ---------------------------------------------------------------------------
+  pypi:
+    name: Build & publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  # ---------------------------------------------------------------------------
+  # npm wrapper: publish packaging/npm to the npm registry. The wrapper's
+  # version is derived from the git tag so it always matches the PyPI release.
+  # Requires secret: NPM_TOKEN (an npm automation token with publish rights).
+  # ---------------------------------------------------------------------------
+  npm:
+    name: Publish npm wrapper
+    needs: pypi
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packaging/npm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Derive version from tag
+        # Strip the leading `v` from refs/tags/vX.Y.Z -> X.Y.Z
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Set package version
+        # --no-git-tag-version: just rewrite package.json, don't tag/commit.
+        # --allow-same-version: don't fail if it already equals the tag.
+        run: npm version "${VERSION}" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # Homebrew wrapper: bump the formula in the external tap repo
+  # `franjofranjic27/homebrew-knomi` to the new PyPI sdist.
+  #
+  # PREREQUISITES (create manually once, before the first tagged release):
+  #   1. Create the tap repo:  https://github.com/franjofranjic27/homebrew-knomi
+  #      and add Formula/knomi.rb (copy this repo's Formula/knomi.rb, then run
+  #      `brew update-python-resources` to fill in the resource blocks).
+  #   2. Create a fine-grained PAT with contents:write on the tap repo and add it
+  #      to THIS repo's secrets as HOMEBREW_TAP_TOKEN.
+  # The action opens/merges a PR that bumps url + sha256 automatically.
+  # ---------------------------------------------------------------------------
+  brew:
+    name: Bump Homebrew formula
+    needs: pypi
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump formula in tap
+        uses: dawidd6/action-homebrew-bump-formula@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: franjofranjic27/homebrew-knomi
+          formula: knomi
+          tag: ${{ github.ref_name }}
+          force: false

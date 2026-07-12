@@ -15,8 +15,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from knomi.config import Config
-from knomi.ingest.embedder import build_embedder
-from knomi.store.qdrant import QdrantStore
+from knomi.retrieval import Retriever
 
 
 class QueryRequest(BaseModel):
@@ -44,8 +43,8 @@ class QueryResponse(BaseModel):
 def create_app(config: Config) -> FastAPI:
     """Build and return the FastAPI application.
 
-    The embedder and store are initialised eagerly so the app is ready to
-    serve requests as soon as this function returns.
+    The retrieval pipeline (embedder + store + optional reranker) is initialised
+    eagerly so the app is ready to serve requests as soon as this returns.
 
     Args:
         config: Runtime configuration (DB URL, collection, embedding model, etc.).
@@ -53,8 +52,7 @@ def create_app(config: Config) -> FastAPI:
     Returns:
         A configured FastAPI application instance.
     """
-    embedder = build_embedder(config)
-    store = QdrantStore(config)
+    retriever = Retriever(config)
 
     app = FastAPI(
         title="knomi RAG API",
@@ -68,19 +66,18 @@ def create_app(config: Config) -> FastAPI:
     @app.get("/health", summary="Liveness check")
     def health() -> dict[str, str]:
         """Return OK and the active collection name."""
-        return {"status": "ok", "collection": config.collection}
+        return {"status": "ok", "collection": config.store.collection}
 
     @app.post("/query", summary="Semantic search")
     def query(req: QueryRequest) -> QueryResponse:
-        """Embed *req.query* and return the *req.top_k* most similar chunks."""
-        vector = embedder.embed_query(req.query)
-        hits = store.search(vector, top_k=req.top_k)
+        """Retrieve the *req.top_k* most relevant chunks for *req.query*."""
+        hits = retriever.search(req.query, top_k=req.top_k)
         return QueryResponse(
             results=[
                 ChunkResult(text=h.chunk.text, score=h.score, metadata=h.chunk.metadata)
                 for h in hits
             ],
-            collection=config.collection,
+            collection=config.store.collection,
         )
 
     return app

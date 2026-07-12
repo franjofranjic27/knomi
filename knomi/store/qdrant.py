@@ -33,12 +33,21 @@ class QdrantStore(VectorStore):
     """Qdrant-backed vector store."""
 
     def __init__(self, config: Config) -> None:
-        self.collection = config.collection
-        self.dim = config.embedding_dim
-        if config.db_url.startswith(("http://", "grpc://")):
-            self.client = QdrantClient(url=config.db_url)
+        store = config.store
+        self.collection = store.collection
+        self.dim = config.embedding.dim
+        if store.url.startswith(("http://", "https://", "grpc://")):
+            # Server mode (incl. Qdrant Cloud over TLS with an API key).
+            if store.api_key and store.url.startswith(("http://", "grpc://")):
+                log.warning(
+                    "Sending the Qdrant API key over an unencrypted endpoint (%s); "
+                    "use an https:// URL so the key is not exposed in transit.",
+                    store.url.split("://", 1)[0],
+                )
+            self.client = QdrantClient(url=store.url, api_key=store.api_key)
         else:
-            self.client = QdrantClient(path=config.db_url)
+            # Local in-process mode: explicit path wins, else treat url as a path.
+            self.client = QdrantClient(path=store.path or store.url)
         self._ensure_collection()
 
     def _ensure_collection(self) -> None:

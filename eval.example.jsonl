@@ -1,0 +1,31 @@
+{"id": "ml-attn", "question": "How does the self-attention mechanism in the transformer architecture work?", "relevant_sources": ["Self-Attention_Transformer", "Speech and Language Processing"]}
+{"id": "ml-backprop", "question": "How does backpropagation compute gradients through a neural network?", "relevant_sources": ["BackProp", "Deep Learning (Ian Goodfellow", "Science of Deep Learning"]}
+{"id": "ml-cnn", "question": "How do convolutional neural networks process images with filters and pooling?", "relevant_sources": ["ConvNets", "Deep Learning (Ian Goodfellow", "Science of Deep Learning"]}
+{"id": "ml-rnn", "question": "Why do RNNs suffer from vanishing gradients and how do LSTMs address it?", "relevant_sources": ["RNNs_LSTMs", "Deep Learning (Ian Goodfellow"]}
+{"id": "ml-attn-mech", "question": "What is the attention mechanism in sequence-to-sequence models?", "relevant_sources": ["Attention_Mechamism", "Self-Attention_Transformer"]}
+{"id": "ml-autoenc", "question": "How do autoencoders learn compressed representations of data?", "relevant_sources": ["Autoencoder", "Deep Learning (Ian Goodfellow"]}
+{"id": "ml-ssl", "question": "What is self-supervised representation learning?", "relevant_sources": ["Representation_Learning-SSL", "Science of Deep Learning"]}
+{"id": "ml-gan", "question": "How does adversarial training work in generative adversarial networks?", "relevant_sources": ["Adversarial_Learning", "Deep Learning (Ian Goodfellow", "Science of Deep Learning"]}
+{"id": "ml-svm", "question": "How do support vector machines find a maximum-margin separating hyperplane?", "relevant_sources": ["Traditional-ML-SVM", "Introduction to Machine Learning (Ethem Alpaydin)"]}
+{"id": "ml-unsup", "question": "What are clustering and other unsupervised learning methods?", "relevant_sources": ["Unsupervised_Learning", "Introduction to Machine Learning (Ethem Alpaydin)", "Deep Learning (Ian Goodfellow"]}
+{"id": "ml-math", "question": "What linear algebra and probability foundations are needed for machine learning?", "relevant_sources": ["Mathematics for Machine Learning", "Deisenroth"]}
+{"id": "ml-intro", "question": "What is the bias-variance tradeoff in supervised learning?", "relevant_sources": ["Introduction to Machine Learning (Ethem Alpaydin)"]}
+{"id": "ml-dl-theory", "question": "What is the universal approximation theorem for deep neural networks?", "relevant_sources": ["Deep Learning (Ian Goodfellow", "Science of Deep Learning"]}
+{"id": "nlp-bpe", "question": "How does byte-pair encoding tokenization work when building a language model?", "relevant_sources": ["Build a Large Language Model", "Raschka"]}
+{"id": "nlp-embed", "question": "How are distributed word embeddings like word2vec learned?", "relevant_sources": ["Introduction to Natural Language Processing (Jacob Eisenstein)", "Speech and Language Processing"]}
+{"id": "nlp-finetune", "question": "How do you fine-tune a pretrained transformer with the Hugging Face library?", "relevant_sources": ["Natural Language Processing with Transformers", "Tunstall"]}
+{"id": "nlp-ngram", "question": "How do n-gram language models estimate word probabilities?", "relevant_sources": ["Speech and Language Processing", "Jurafsky"]}
+{"id": "nlp-pytorch", "question": "How do you build a text classifier with PyTorch for NLP?", "relevant_sources": ["Natural Language Processing with PyTorch", "McMahan"]}
+{"id": "arch-fundamentals", "question": "What are architecture characteristics and quality attributes in software architecture?", "relevant_sources": ["SoftwareArchitectureFundamentals", "Fundamentals of Software Architecture"]}
+{"id": "arch-ddd", "question": "What are aggregates, entities, and bounded contexts in domain-driven design?", "relevant_sources": ["Domain-Driven Design"]}
+{"id": "arch-fitness", "question": "What are architectural fitness functions in evolutionary architecture?", "relevant_sources": ["Building Evolutionary Architectures", "Architectural Fitness Functions"]}
+{"id": "arch-decoupling", "question": "How do ecosystems and decoupling shape distributed service architectures?", "relevant_sources": ["Ecosystems-Decoupling", "Fundamentals of Software Architecture", "Hard Parts"]}
+{"id": "arch-data", "question": "How are data ownership and data access handled in distributed architectures?", "relevant_sources": ["Data Ownership", "Hard Parts"]}
+{"id": "mas-bdi", "question": "What is the belief-desire-intention (BDI) model in multi-agent systems?", "relevant_sources": ["Multiagent Systems, 2E (Gerhard Weiss)", "Multi-Agent Oriented Programming"]}
+{"id": "mas-jacamo", "question": "How does the JaCaMo framework support agent-oriented programming?", "relevant_sources": ["Multi-Agent Oriented Programming"]}
+{"id": "mas-semweb", "question": "How are RDFS and OWL used to model ontologies for linked data on the semantic web?", "relevant_sources": ["Semantic Web for the Working Ontologist"]}
+{"id": "mas-aiagents", "question": "How do you design and implement multiagent systems with AI agents?", "relevant_sources": ["Building Applications with AI Agents"]}
+{"id": "ucd-norman", "question": "What are affordances, signifiers, and usability principles in everyday design?", "relevant_sources": ["The Design of Everyday Things"]}
+{"id": "ucd-interaction", "question": "What are the core principles of interaction design beyond human-computer interaction?", "relevant_sources": ["Interaction design", "Rogers"]}
+{"id": "ucd-proto", "question": "How do wireframing and prototyping fit into the user-centered design process?", "relevant_sources": ["Wireframe_Prototyping", "UCD_Exercise_Figma"]}
+{"id": "ai-eng", "question": "How do you build applications on top of foundation models?", "relevant_sources": ["AI Engineering Building Applications with Foundation Models", "Chip Huyen"]}

@@ -17,6 +17,37 @@ import pytest
 
 from knomi.ingest.embedder import BaseEmbedder
 
+# knomi.json / secret env vars that must not leak into tests from the developer's
+# shell or a knomi.json sitting in the repo root.
+_PROFILE_ENV = (
+    "KNOMI_PROFILE",
+    "KNOMI_STORE__COLLECTION",
+    "KNOMI_STORE__BACKEND",
+    "KNOMI_EMBEDDING__DIM",
+    "OPENAI_API_KEY",
+    "COHERE_API_KEY",
+    "QDRANT_API_KEY",
+    "KNOMI_PG_DSN",
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_ambient_profile(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Run every test in a clean CWD with profile-related env vars cleared.
+
+    Without this, a ``knomi.json`` in the working directory (e.g. one a developer
+    created for a real run) or an exported ``KNOMI_*`` / API-key variable would
+    silently seep into ``Config`` and change what backends/strategies tests see.
+    Tests that exercise profiles write their own ``knomi.json`` and chdir
+    explicitly, which overrides this isolation.
+    """
+    clean_cwd = tmp_path / "_clean_cwd"
+    clean_cwd.mkdir(exist_ok=True)
+    monkeypatch.chdir(clean_cwd)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "_xdg"))
+    for key in _PROFILE_ENV:
+        monkeypatch.delenv(key, raising=False)
+
 
 def _write_minimal_pdf(path: Path, text: str = "PDF document content for testing.") -> None:
     """Write a minimal valid PDF to *path* using PyMuPDF."""

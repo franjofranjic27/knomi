@@ -50,7 +50,7 @@ class _MockEmbedder(BaseEmbedder):
 
 
 def _run(source_dir: Path, store: _MockStore) -> PipelineResult:
-    config = Config(source_dir=source_dir, embedding_dim=4)
+    config = Config(source_dir=source_dir, embedding={"dim": 4})
     with (
         patch("knomi.store.qdrant.QdrantStore", return_value=store),
         patch("knomi.ingest.embedder.build_embedder", return_value=_MockEmbedder()),
