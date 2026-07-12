@@ -61,3 +61,6 @@ logs/
 # knomi runtime
 .knomi/
 *.knomi_index
+
+# MkDocs build output
+site/

@@ -68,7 +68,7 @@ def create_app(config: Config) -> FastAPI:
         """Return OK and the active collection name."""
         return {"status": "ok", "collection": config.store.collection}
 
-    @app.post("/query", response_model=QueryResponse, summary="Semantic search")
+    @app.post("/query", summary="Semantic search")
     def query(req: QueryRequest) -> QueryResponse:
         """Retrieve the *req.top_k* most relevant chunks for *req.query*."""
         hits = retriever.search(req.query, top_k=req.top_k)
