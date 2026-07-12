@@ -70,6 +70,6 @@ def ndcg_at_k(relevances: list[bool], k: int, total_relevant: int) -> float:
     if ideal_hits <= 0:
         return 0.0
     idcg = sum(1.0 / log2(i + 2) for i in range(ideal_hits))
-    if idcg == 0.0:
+    if idcg <= 0.0:
         return 0.0
     return dcg_at_k(relevances, k) / idcg
