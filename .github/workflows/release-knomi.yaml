@@ -49,6 +49,9 @@ jobs:
   npm:
     name: Publish npm wrapper
     needs: pypi
+    # Disabled until NPM_TOKEN is configured. Enable by setting the repo
+    # variable ENABLE_NPM_RELEASE=true (Settings → Variables → Actions).
+    if: ${{ vars.ENABLE_NPM_RELEASE == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -91,6 +94,9 @@ jobs:
   brew:
     name: Bump Homebrew formula
     needs: pypi
+    # Disabled until the tap repo and HOMEBREW_TAP_TOKEN exist. Enable by
+    # setting the repo variable ENABLE_BREW_RELEASE=true.
+    if: ${{ vars.ENABLE_BREW_RELEASE == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Bump formula in tap
